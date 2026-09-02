@@ -1,0 +1,65 @@
+[
+  {
+    "id": "startup_test",
+    "name": "测试提醒",
+    "enabled": true,
+    "first_time": 10,
+    "interval": 0,
+    "warning": 0,
+    "message": "提示系统工作正常"
+  },
+  {
+    "id": "lotus_warning",
+    "name": "莲花",
+    "enabled": true,
+    "first_time": 180,
+    "interval": 180,
+    "warning": 20,
+    "message": "二十秒后莲花刷新"
+  },
+  {
+    "id": "lotus_now",
+    "name": "莲花",
+    "enabled": true,
+    "first_time": 180,
+    "interval": 180,
+    "warning": 0,
+    "message": "莲花已经刷新"
+  },
+  {
+    "id": "wisdom_warning",
+    "name": "智慧符",
+    "enabled": true,
+    "first_time": 420,
+    "interval": 420,
+    "warning": 20,
+    "message": "二十秒后智慧符刷新"
+  },
+  {
+    "id": "wisdom_now",
+    "name": "智慧符",
+    "enabled": true,
+    "first_time": 420,
+    "interval": 420,
+    "warning": 0,
+    "message": "智慧符已经刷新"
+  },
+  {
+    "id": "f1",
+    "name": "河道神符",
+    "enabled": true,
+    "first_time": 360,
+    "interval": 120,
+    "warning": 20,
+    "message": "二十秒后河道神符刷新"
+  },
+  {
+    "id": "f2",
+    "name": "河道神符",
+    "enabled": true,
+    "first_time": 360,
+    "interval": 120,
+    "warning": 0,
+    "message": "河道神符已经刷新"
+  }
+]
