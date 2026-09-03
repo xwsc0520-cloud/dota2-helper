@@ -81,17 +81,6 @@ class Rule:
                     f"规则 {self.id}: last_time 不能小于 first_time"
                 )
 
-            if (
-                self.interval > 0
-                and (
-                    self.last_time - self.first_time
-                ) % self.interval != 0
-            ):
-                raise ValueError(
-                    f"规则 {self.id}: "
-                    "last_time 必须与 first_time 按 interval 对齐"
-                )
-
 
 @dataclass(frozen=True)
 class TriggeredEvent:
