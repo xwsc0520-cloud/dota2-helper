@@ -427,10 +427,10 @@ def get_game_time(
     if not isinstance(map_data, dict):
         return None
 
-    value = map_data.get("game_time")
+    value = map_data.get("clock_time")
 
     if value is None:
-        value = map_data.get("clock_time")
+        value = map_data.get("game_time")
 
     if value is None:
         return None
