@@ -1,6 +1,9 @@
 一、使用方法
-1. 双击 run_helper.bat 即可使用
-2. rules.json 文件中可以自定义规则
+1. 打开目录：Steam/steamapps/common/dota 2 beta/game/dota/cfg/gamestate_integration/
+2. 把 gamestate_integration_myapp.cfg 文件复制到该目录下
+3. 游戏启动参数加上 -gamestateintegration
+4. 双击 run_helper.bat
+5. rules.json 文件中可以自定义规则
 
 二、没有dota2的情况下，可模拟测试
 1. 再双击 `run_simulator.bat`
