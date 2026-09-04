@@ -27,7 +27,7 @@ OVERLAY_BACKGROUND_ALPHA = 32
 OVERLAY_BORDER_ALPHA = 32
 
 # 文字透明度，范围 0~255。
-OVERLAY_TEXT_ALPHA = 196
+OVERLAY_TEXT_ALPHA = 160
 
 BASE_TIMELINE_WIDTH = 255
 BASE_LAST_HITS_WIDTH = 180
@@ -39,7 +39,7 @@ BASE_OVERLAY_WIDTH = (
     + BASE_LAST_HITS_WIDTH
 )
 
-BASE_OVERLAY_HEIGHT = 132
+BASE_OVERLAY_HEIGHT = 160
 
 
 class OverlayController(QObject):
@@ -394,13 +394,12 @@ class TimelineOverlayWindow(QWidget):
             )
         )
 
-        line_height = 10
+        line_height = 12
         start_y = 27
 
         for index, line in enumerate(lines):
             y = start_y + index * line_height
 
-            # 每行背景
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(
                 QColor(
@@ -415,12 +414,11 @@ class TimelineOverlayWindow(QWidget):
                 px(panel_x + 6),
                 px(y),
                 px(panel_width - 16),
-                px(9),
+                px(10),
                 px(2),
                 px(2),
             )
 
-            # 每行文字
             painter.setPen(
                 QColor(
                     248,
@@ -434,7 +432,7 @@ class TimelineOverlayWindow(QWidget):
                 px(panel_x + 9),
                 px(y),
                 px(panel_width - 22),
-                px(9),
+                px(10),
                 Qt.AlignmentFlag.AlignLeft
                 | Qt.AlignmentFlag.AlignVCenter,
                 line,
@@ -606,6 +604,18 @@ class TimelineOverlayWindow(QWidget):
             else None
         )
 
+        future_3 = (
+            self.future_events[2]
+            if len(self.future_events) >= 3
+            else None
+        )
+
+        future_4 = (
+            self.future_events[3]
+            if len(self.future_events) >= 4
+            else None
+        )
+
         rows = [
             (
                 "刚刚",
@@ -643,6 +653,32 @@ class TimelineOverlayWindow(QWidget):
                     167,
                     139,
                     250,
+                    OVERLAY_TEXT_ALPHA,
+                ),
+            ),
+            (
+                "再之后",
+                self._event_text(
+                    future_3,
+                    "暂无后续事件",
+                ),
+                QColor(
+                    129,
+                    140,
+                    248,
+                    OVERLAY_TEXT_ALPHA,
+                ),
+            ),
+            (
+                "更之后",
+                self._event_text(
+                    future_4,
+                    "暂无后续事件",
+                ),
+                QColor(
+                    192,
+                    132,
+                    252,
                     OVERLAY_TEXT_ALPHA,
                 ),
             ),
