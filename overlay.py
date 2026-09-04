@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 
 # 整体缩放比例。
-OVERLAY_SCALE = 1.5
+OVERLAY_SCALE = 2
 
 # 悬浮窗距离屏幕顶部的距离，单位：像素。
 OVERLAY_TOP_OFFSET = 70
@@ -27,7 +27,7 @@ OVERLAY_BACKGROUND_ALPHA = 32
 OVERLAY_BORDER_ALPHA = 32
 
 # 文字透明度，范围 0~255。
-OVERLAY_TEXT_ALPHA = 128
+OVERLAY_TEXT_ALPHA = 196
 
 # 基础尺寸
 BASE_OVERLAY_WIDTH = 255
