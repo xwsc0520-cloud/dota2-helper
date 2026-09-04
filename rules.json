@@ -6,7 +6,7 @@
   },
   {
     "id": "大药",
-    "first_time": 60,
+    "first_time": 120,
     "message": "提醒爵爷购买大药"
   },
   {
@@ -32,24 +32,24 @@
     "message": "二十秒后河道神符刷新"
   },
   {
-    "id": "5_10",
-    "first_time": 310,
+    "id": "6_10",
+    "first_time": 370,
     "last_time": 600,
     "interval": 60,
-    "message": "天黑，找中单，开雾，做眼"
+    "message": "二四五miss，换线，做眼"
   },
   {
     "id": "10_15",
     "first_time": 610,
     "last_time": 900,
     "interval": 60,
-    "message": "天亮，找二三，开雾，做眼"
+    "message": "二四五miss，换线，做眼"
   },
   {
     "id": "15_20",
     "first_time": 910,
     "last_time": 1200,
     "interval": 60,
-    "message": "天黑，找二三，开雾，做眼"
+    "message": "二四五miss，换线，做眼"
   }
 ]

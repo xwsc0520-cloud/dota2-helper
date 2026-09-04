@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 OVERLAY_SCALE = 1.5
 
 # 悬浮窗距离屏幕顶部的距离，单位：像素。
-OVERLAY_TOP_OFFSET = 100
+OVERLAY_TOP_OFFSET = 70
 
 # 水平方向偏移，单位：像素。
 OVERLAY_HORIZONTAL_OFFSET = 0
