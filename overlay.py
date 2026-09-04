@@ -2,14 +2,14 @@ import sys
 import threading
 from typing import Dict, List, Optional
 
-from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtCore import QObject, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
 
 
 # 整体缩放比例。
-OVERLAY_SCALE = 2
+OVERLAY_SCALE = 1.5
 
 # 悬浮窗距离屏幕顶部的距离，单位：像素。
 OVERLAY_TOP_OFFSET = 70
@@ -29,9 +29,17 @@ OVERLAY_BORDER_ALPHA = 32
 # 文字透明度，范围 0~255。
 OVERLAY_TEXT_ALPHA = 196
 
-# 基础尺寸
-BASE_OVERLAY_WIDTH = 255
-BASE_OVERLAY_HEIGHT = 80
+BASE_TIMELINE_WIDTH = 255
+BASE_LAST_HITS_WIDTH = 180
+BASE_PANEL_GAP = 8
+
+BASE_OVERLAY_WIDTH = (
+    BASE_TIMELINE_WIDTH
+    + BASE_PANEL_GAP
+    + BASE_LAST_HITS_WIDTH
+)
+
+BASE_OVERLAY_HEIGHT = 132
 
 
 class OverlayController(QObject):
@@ -41,6 +49,8 @@ class OverlayController(QObject):
         object,
         bool,
     )
+
+    update_last_hits_signal = Signal(str)
 
     close_signal = Signal()
 
@@ -81,6 +91,11 @@ class OverlayController(QObject):
             Qt.ConnectionType.QueuedConnection,
         )
 
+        self.update_last_hits_signal.connect(
+            self.window.set_last_hits_ranking,
+            Qt.ConnectionType.QueuedConnection,
+        )
+
         self.close_signal.connect(
             self.window.close,
             Qt.ConnectionType.QueuedConnection,
@@ -108,6 +123,16 @@ class OverlayController(QObject):
             in_progress,
         )
 
+    def update_last_hits_ranking(
+            self,
+            text: str,
+    ) -> None:
+        self.start()
+
+        self.update_last_hits_signal.emit(
+            text or ""
+        )
+
     def close(self) -> None:
         if self.app is not None:
             self.close_signal.emit()
@@ -121,6 +146,8 @@ class TimelineOverlayWindow(QWidget):
         self.past_events: List[Dict] = []
         self.future_events: List[Dict] = []
         self.in_progress = False
+
+        self.last_hits_ranking_text = ""
 
         self.setWindowTitle("Dota 2 时间轴悬浮提示")
 
@@ -271,6 +298,162 @@ class TimelineOverlayWindow(QWidget):
 
         self.update()
 
+    def _draw_last_hits_panel(
+            self,
+            painter: QPainter,
+            px,
+    ) -> None:
+        """
+        绘制右侧补刀排序区域。
+        """
+
+        panel_x = (
+                BASE_TIMELINE_WIDTH
+                + BASE_PANEL_GAP
+        )
+
+        panel_width = BASE_LAST_HITS_WIDTH
+        panel_height = BASE_OVERLAY_HEIGHT
+
+        # 右侧背景
+        painter.setPen(
+            QPen(
+                QColor(
+                    255,
+                    255,
+                    255,
+                    OVERLAY_BORDER_ALPHA,
+                ),
+                px(1),
+            )
+        )
+
+        painter.setBrush(
+            QColor(
+                8,
+                15,
+                28,
+                OVERLAY_BACKGROUND_ALPHA,
+            )
+        )
+
+        painter.drawRoundedRect(
+            px(panel_x + 2),
+            px(2),
+            px(panel_width - 4),
+            px(panel_height - 4),
+            px(6),
+            px(6),
+        )
+
+        # 标题
+        painter.setFont(
+            QFont(
+                "Microsoft YaHei",
+                px(7),
+                QFont.Weight.Bold,
+            )
+        )
+
+        painter.setPen(
+            QColor(
+                251,
+                191,
+                36,
+                OVERLAY_TEXT_ALPHA,
+            )
+        )
+
+        painter.drawText(
+            px(panel_x + 8),
+            px(6),
+            px(panel_width - 16),
+            px(18),
+            Qt.AlignmentFlag.AlignLeft
+            | Qt.AlignmentFlag.AlignVCenter,
+            "补刀排行",
+        )
+
+        ranking_text = (
+            self.last_hits_ranking_text.strip()
+        )
+
+        if not ranking_text:
+            ranking_text = "暂无数据"
+
+        lines = ranking_text.splitlines()
+
+        # 最多显示 10 行玩家
+        lines = lines[:10]
+
+        painter.setFont(
+            QFont(
+                "Microsoft YaHei",
+                px(6),
+                QFont.Weight.Bold,
+            )
+        )
+
+        line_height = 10
+        start_y = 27
+
+        for index, line in enumerate(lines):
+            y = start_y + index * line_height
+
+            # 每行背景
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(
+                QColor(
+                    255,
+                    255,
+                    255,
+                    8,
+                )
+            )
+
+            painter.drawRoundedRect(
+                px(panel_x + 6),
+                px(y),
+                px(panel_width - 16),
+                px(9),
+                px(2),
+                px(2),
+            )
+
+            # 每行文字
+            painter.setPen(
+                QColor(
+                    248,
+                    250,
+                    252,
+                    OVERLAY_TEXT_ALPHA,
+                )
+            )
+
+            painter.drawText(
+                px(panel_x + 9),
+                px(y),
+                px(panel_width - 22),
+                px(9),
+                Qt.AlignmentFlag.AlignLeft
+                | Qt.AlignmentFlag.AlignVCenter,
+                line,
+            )
+
+    def set_last_hits_ranking(
+            self,
+            text: str,
+    ) -> None:
+        self.last_hits_ranking_text = text or ""
+
+        self.show()
+        self.raise_()
+
+        if sys.platform.startswith("win"):
+            self._set_windows_click_through_topmost()
+
+        self.update()
+
     @staticmethod
     def _event_text(
         event: Optional[Dict],
@@ -304,11 +487,11 @@ class TimelineOverlayWindow(QWidget):
         def px(value: float) -> int:
             return max(1, round(value * s))
 
-        panel_rect = self.rect().adjusted(
+        timeline_panel_rect = QRect(
             px(2),
             px(2),
-            -px(2),
-            -px(2),
+            px(BASE_TIMELINE_WIDTH - 4),
+            px(BASE_OVERLAY_HEIGHT - 4),
         )
 
         # 主背景
@@ -334,7 +517,7 @@ class TimelineOverlayWindow(QWidget):
         )
 
         painter.drawRoundedRect(
-            panel_rect,
+            timeline_panel_rect,
             px(6),
             px(6),
         )
@@ -491,7 +674,7 @@ class TimelineOverlayWindow(QWidget):
             painter.drawRoundedRect(
                 px(row_width_margin),
                 px(y),
-                self.width() - px(row_width_margin * 2),
+                self._scaled(BASE_TIMELINE_WIDTH - row_width_margin * 2),
                 px(row_height_value),
                 px(row_radius),
                 px(row_radius),
@@ -539,9 +722,15 @@ class TimelineOverlayWindow(QWidget):
             painter.drawText(
                 px(43),
                 px(y),
-                self.width() - px(49),
+                self._scaled(BASE_TIMELINE_WIDTH - 49),
                 px(row_height_value),
                 Qt.AlignmentFlag.AlignLeft
                 | Qt.AlignmentFlag.AlignVCenter,
                 text,
             )
+
+        self._draw_last_hits_panel(
+            painter,
+            px,
+        )
+

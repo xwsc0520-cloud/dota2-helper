@@ -504,26 +504,158 @@ class SimulatorState:
     last_send_ok: bool = False
     last_error: str = ""
     last_sent_at: str = ""
-    lock: threading.RLock = field(default_factory=threading.RLock)
+
+    players: Dict[str, Dict[str, Any]] = field(
+        default_factory=dict
+    )
+
+    lock: threading.RLock = field(
+        default_factory=threading.RLock
+    )
 
     def snapshot(self) -> Dict[str, Any]:
         with self.lock:
             integer_time = int(self.game_time)
+
             return {
                 "target_url": self.target_url,
                 "speed": self.speed,
                 "game_time": integer_time,
-                "game_time_text": format_game_time(integer_time),
+                "game_time_text":
+                    format_game_time(integer_time),
                 "running": self.running,
                 "last_send_ok": self.last_send_ok,
                 "last_error": self.last_error,
                 "last_sent_at": self.last_sent_at,
+                "players": self.players,
             }
 
-    def make_gsi_payload(self) -> Dict[str, Any]:
+    def make_gsi_payload(
+            self,
+    ) -> Dict[str, Any]:
         with self.lock:
             game_time = int(self.game_time)
             running = self.running
+
+        # 根据游戏时间模拟补刀数。
+        #
+        # 每名玩家每 15 秒增加一定数量的补刀。
+        # 这里故意设置不同的补刀效率，
+        # 以便测试排序结果。
+        player_configs = [
+            {
+                "key": "player0",
+                "steamid": "SIMULATED_PLAYER_0",
+                "name": "Radiant Carry",
+                "team_name": "radiant",
+                "last_hits_per_second": 0.32,
+            },
+            {
+                "key": "player1",
+                "steamid": "SIMULATED_PLAYER_1",
+                "name": "Radiant Mid",
+                "team_name": "radiant",
+                "last_hits_per_second": 0.28,
+            },
+            {
+                "key": "player2",
+                "steamid": "SIMULATED_PLAYER_2",
+                "name": "Radiant Offlane",
+                "team_name": "radiant",
+                "last_hits_per_second": 0.20,
+            },
+            {
+                "key": "player3",
+                "steamid": "SIMULATED_PLAYER_3",
+                "name": "Radiant Support",
+                "team_name": "radiant",
+                "last_hits_per_second": 0.12,
+            },
+            {
+                "key": "player4",
+                "steamid": "SIMULATED_PLAYER_4",
+                "name": "Radiant Hard Support",
+                "team_name": "radiant",
+                "last_hits_per_second": 0.08,
+            },
+            {
+                "key": "player5",
+                "steamid": "SIMULATED_PLAYER_5",
+                "name": "Dire Carry",
+                "team_name": "dire",
+                "last_hits_per_second": 0.30,
+            },
+            {
+                "key": "player6",
+                "steamid": "SIMULATED_PLAYER_6",
+                "name": "Dire Mid",
+                "team_name": "dire",
+                "last_hits_per_second": 0.26,
+            },
+            {
+                "key": "player7",
+                "steamid": "SIMULATED_PLAYER_7",
+                "name": "Dire Offlane",
+                "team_name": "dire",
+                "last_hits_per_second": 0.21,
+            },
+            {
+                "key": "player8",
+                "steamid": "SIMULATED_PLAYER_8",
+                "name": "Dire Support",
+                "team_name": "dire",
+                "last_hits_per_second": 0.11,
+            },
+            {
+                "key": "player9",
+                "steamid": "SIMULATED_PLAYER_9",
+                "name": "Dire Hard Support",
+                "team_name": "dire",
+                "last_hits_per_second": 0.07,
+            },
+        ]
+
+        players = {}
+
+        for config in player_configs:
+            last_hits = max(
+                0,
+                int(
+                    game_time
+                    * config["last_hits_per_second"]
+                ),
+            )
+
+            players[config["key"]] = {
+                "steamid": config["steamid"],
+                "name": config["name"],
+                "activity": "playing",
+                "kills": 0,
+                "deaths": 0,
+                "assists": 0,
+                "last_hits": last_hits,
+                "denies": 0,
+                "kill_streak": 0,
+                "commands_issued": 0,
+                "team_name": config["team_name"],
+                "gold": 600 + max(0, game_time) * 2,
+                "gold_reliable": 0,
+                "gold_unreliable":
+                    600 + max(0, game_time) * 2,
+                "gold_from_hero_kills": 0,
+                "gold_from_creep_kills":
+                    max(0, game_time) * 2,
+                "gold_from_income": 0,
+                "gold_from_shared": 0,
+                "gpm": int(
+                    config["last_hits_per_second"]
+                    * 1000
+                ),
+                "xpm": int(
+                    config["last_hits_per_second"]
+                    * 1100
+                ),
+            }
 
         return {
             "provider": {
@@ -548,32 +680,17 @@ class SimulatorState:
                 "customgamename": "",
                 "ward_purchase_cooldown": 0,
             },
-            "player": {
-                "steamid": "SIMULATED_PLAYER",
-                "name": "GSI Simulator",
-                "activity": "playing",
-                "kills": 0,
-                "deaths": 0,
-                "assists": 0,
-                "last_hits": max(0, game_time // 15),
-                "denies": 0,
-                "kill_streak": 0,
-                "commands_issued": 0,
-                "team_name": "radiant",
-                "gold": 600 + max(0, game_time) * 2,
-                "gold_reliable": 0,
-                "gold_unreliable": 600 + max(0, game_time) * 2,
-                "gold_from_hero_kills": 0,
-                "gold_from_creep_kills": max(0, game_time) * 2,
-                "gold_from_income": 0,
-                "gold_from_shared": 0,
-                "gpm": 300,
-                "xpm": 300,
-            },
+            "player": players,
             "hero": {
                 "id": 1,
                 "name": "npc_dota_hero_antimage",
-                "level": max(1, min(30, 1 + max(0, game_time) // 60)),
+                "level": max(
+                    1,
+                    min(
+                        30,
+                        1 + max(0, game_time) // 60,
+                    ),
+                ),
                 "alive": True,
                 "respawn_seconds": 0,
                 "buyback_cost": 0,

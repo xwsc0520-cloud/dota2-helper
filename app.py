@@ -85,7 +85,7 @@ def update_overlay(
     past, future = engine.timeline(
         game_time=game_time,
         past_count=1,
-        future_count=2,
+        future_count=5,
     )
 
     overlay.update_timeline(
@@ -104,12 +104,56 @@ def update_overlay(
     )
 
 
-def reset_match_locked() -> None:
-    global latest_state
+def get_last_hits_ranking_text(
+    state: Dict[str, Any],
+) -> str:
+    player_data = state.get("player")
 
-    latest_state = {}
-    recent_events.clear()
-    engine.reset()
+    if not isinstance(player_data, dict):
+        return ""
+
+    players = []
+
+    for player_key, player in player_data.items():
+        if not isinstance(player, dict):
+            continue
+
+        # 只处理包含 last_hits 的玩家对象
+        if "last_hits" not in player:
+            continue
+
+        try:
+            last_hits = int(
+                player.get("last_hits", 0)
+            )
+        except (TypeError, ValueError):
+            last_hits = 0
+
+        name = player.get("name")
+
+        if not isinstance(name, str) or not name:
+            name = player_key
+
+        players.append(
+            {
+                "name": name,
+                "last_hits": last_hits,
+            }
+        )
+
+    players.sort(
+        key=lambda player: player["last_hits"],
+        reverse=True,
+    )
+
+    return "\n".join(
+        f"{index}. {player['name']}："
+        f"{player['last_hits']} 补刀"
+        for index, player in enumerate(
+            players,
+            start=1,
+        )
+    )
 
 
 @app.post("/gsi")
@@ -133,6 +177,7 @@ def receive_gsi():
 
         game_time = get_game_time(data)
         in_progress = is_game_in_progress(data)
+        last_hits_ranking_text = get_last_hits_ranking_text(data)
 
         if game_time is not None:
             if in_progress:
@@ -170,117 +215,19 @@ def receive_gsi():
                 in_progress=in_progress,
             )
 
+        overlay.update_last_hits_ranking(
+            last_hits_ranking_text
+        )
+
     # 锁外播报，避免 TTS 影响 GSI 请求。
     for event in triggered_events:
         voice.speak(event.message)
 
-    return jsonify(
-        {
-            "ok": True,
-            "game_time": get_game_time(data),
-            "events_triggered": len(
-                triggered_events
-            ),
-        }
-    )
-
-
-@app.get("/api/state")
-def api_state():
-    with state_lock:
-        game_time = get_game_time(
-            latest_state
-        )
-
-        if game_time is None:
-            past = []
-            future = []
-        else:
-            past_events, future_events = (
-                engine.timeline(
-                    game_time,
-                    past_count=1,
-                    future_count=2,
-                )
-            )
-
-            past = [
-                timeline_event_to_dict(event)
-                for event in past_events
-            ]
-
-            future = [
-                timeline_event_to_dict(event)
-                for event in future_events
-            ]
-
-        return jsonify(
-            {
-                "connected": bool(latest_state),
-                "game_time": game_time,
-                "game_time_text":
-                    format_game_time(game_time),
-                "in_progress":
-                    is_game_in_progress(
-                        latest_state
-                    ),
-                "past": past,
-                "future": future,
-                "events": list(recent_events),
-                "state": latest_state,
-            }
-        )
-
-
-@app.post("/api/reset")
-def api_reset():
-    with state_lock:
-        reset_match_locked()
-
-    overlay.update_timeline(
-        game_time_text="--:--",
-        past_events=[],
-        future_events=[],
-        in_progress=False,
-    )
-
-    return jsonify({"ok": True})
-
-
-@app.get("/health")
-def health():
-    return jsonify({"ok": True})
-
-
-@app.get("/")
-def index():
-    return """
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <title>Dota 2 提示工具</title>
-</head>
-<body>
-  <h1>Dota 2 提示工具正在运行</h1>
-  <p>常驻时间轴悬浮窗已启动。</p>
-  <p>事件发生时使用中文语音播报。</p>
-  <p>
-    <a href="/api/state">
-      查看当前状态 JSON
-    </a>
-  </p>
-</body>
-</html>
-"""
+    return "", 200
 
 
 if __name__ == "__main__":
     print("Dota 2 提示工具已启动")
-    print("GSI：http://127.0.0.1:3000/gsi")
-    print("状态：http://127.0.0.1:3000")
-    print("提示方式：常驻悬浮时间轴 + 中文语音")
-    print("按 Ctrl+C 停止")
 
     app.run(
         host="127.0.0.1",
