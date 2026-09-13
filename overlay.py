@@ -7,7 +7,6 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
 
-
 # 整体缩放比例。
 OVERLAY_SCALE = 1.5
 
@@ -30,16 +29,19 @@ OVERLAY_BORDER_ALPHA = 32
 OVERLAY_TEXT_ALPHA = 160
 
 BASE_TIMELINE_WIDTH = 255
-BASE_LAST_HITS_WIDTH = 180
+
+# 右侧普通信息面板宽度。
+BASE_INFO_WIDTH = 180
+
 BASE_PANEL_GAP = 8
 
 BASE_OVERLAY_WIDTH = (
     BASE_TIMELINE_WIDTH
     + BASE_PANEL_GAP
-    + BASE_LAST_HITS_WIDTH
+    + BASE_INFO_WIDTH
 )
 
-BASE_OVERLAY_HEIGHT = 160
+BASE_OVERLAY_HEIGHT = 120
 
 
 class OverlayController(QObject):
@@ -50,7 +52,8 @@ class OverlayController(QObject):
         bool,
     )
 
-    update_last_hits_signal = Signal(str)
+    # 右侧普通信息文本信号。
+    update_info_signal = Signal(str)
 
     close_signal = Signal()
 
@@ -91,8 +94,8 @@ class OverlayController(QObject):
             Qt.ConnectionType.QueuedConnection,
         )
 
-        self.update_last_hits_signal.connect(
-            self.window.set_last_hits_ranking,
+        self.update_info_signal.connect(
+            self.window.set_info_text,
             Qt.ConnectionType.QueuedConnection,
         )
 
@@ -123,15 +126,15 @@ class OverlayController(QObject):
             in_progress,
         )
 
-    def update_last_hits_ranking(
-            self,
-            text: str,
-    ) -> None:
-        self.start()
+    def update_info(self, text: str) -> None:
+        """
+        更新右侧普通信息区域。
 
-        self.update_last_hits_signal.emit(
-            text or ""
-        )
+        text 可以是单行或多行字符串，例如：
+            "英雄：Hoodwink\n等级：1\n生命值：494 / 494"
+        """
+        self.start()
+        self.update_info_signal.emit(text or "")
 
     def close(self) -> None:
         if self.app is not None:
@@ -147,7 +150,8 @@ class TimelineOverlayWindow(QWidget):
         self.future_events: List[Dict] = []
         self.in_progress = False
 
-        self.last_hits_ranking_text = ""
+        # 右侧普通信息文本。
+        self.info_text = ""
 
         self.setWindowTitle("Dota 2 时间轴悬浮提示")
 
@@ -298,24 +302,44 @@ class TimelineOverlayWindow(QWidget):
 
         self.update()
 
-    def _draw_last_hits_panel(
-            self,
-            painter: QPainter,
-            px,
+    def set_info_text(self, text: str) -> None:
+        """
+        设置右侧普通信息。
+
+        text 可以包含换行符，也可以是长文本。
+        """
+        self.info_text = text or ""
+
+        self.show()
+        self.raise_()
+
+        if sys.platform.startswith("win"):
+            self._set_windows_click_through_topmost()
+
+        self.update()
+
+    def _draw_info_panel(
+        self,
+        painter: QPainter,
+        px,
     ) -> None:
         """
-        绘制右侧补刀排序区域。
+        绘制右侧普通信息区域。
+
+        支持：
+        1. 文本中的 \\n 换行
+        2. 长文本根据面板宽度自动换行
         """
 
         panel_x = (
-                BASE_TIMELINE_WIDTH
-                + BASE_PANEL_GAP
+            BASE_TIMELINE_WIDTH
+            + BASE_PANEL_GAP
         )
 
-        panel_width = BASE_LAST_HITS_WIDTH
+        panel_width = BASE_INFO_WIDTH
         panel_height = BASE_OVERLAY_HEIGHT
 
-        # 右侧背景
+        # 右侧面板背景。
         painter.setPen(
             QPen(
                 QColor(
@@ -346,7 +370,7 @@ class TimelineOverlayWindow(QWidget):
             px(6),
         )
 
-        # 标题
+        # 标题。
         painter.setFont(
             QFont(
                 "Microsoft YaHei",
@@ -371,86 +395,47 @@ class TimelineOverlayWindow(QWidget):
             px(18),
             Qt.AlignmentFlag.AlignLeft
             | Qt.AlignmentFlag.AlignVCenter,
-            "补刀排行",
+            "信息",
         )
 
-        ranking_text = (
-            self.last_hits_ranking_text.strip()
-        )
+        text = self.info_text.strip()
 
-        if not ranking_text:
-            ranking_text = "暂无数据"
+        if not text:
+            text = "暂无信息"
 
-        lines = ranking_text.splitlines()
-
-        # 最多显示 10 行玩家
-        lines = lines[:10]
-
+        # 正文。
         painter.setFont(
             QFont(
                 "Microsoft YaHei",
                 px(6),
-                QFont.Weight.Bold,
+                QFont.Weight.Normal,
             )
         )
 
-        line_height = 12
-        start_y = 27
-
-        for index, line in enumerate(lines):
-            y = start_y + index * line_height
-
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(
-                QColor(
-                    255,
-                    255,
-                    255,
-                    8,
-                )
+        painter.setPen(
+            QColor(
+                248,
+                250,
+                252,
+                OVERLAY_TEXT_ALPHA,
             )
+        )
 
-            painter.drawRoundedRect(
-                px(panel_x + 6),
-                px(y),
-                px(panel_width - 16),
-                px(10),
-                px(2),
-                px(2),
-            )
+        # 正文区域。
+        text_rect = QRect(
+            px(panel_x + 8),
+            px(27),
+            px(panel_width - 16),
+            px(panel_height - 35),
+        )
 
-            painter.setPen(
-                QColor(
-                    248,
-                    250,
-                    252,
-                    OVERLAY_TEXT_ALPHA,
-                )
-            )
-
-            painter.drawText(
-                px(panel_x + 9),
-                px(y),
-                px(panel_width - 22),
-                px(10),
-                Qt.AlignmentFlag.AlignLeft
-                | Qt.AlignmentFlag.AlignVCenter,
-                line,
-            )
-
-    def set_last_hits_ranking(
-            self,
-            text: str,
-    ) -> None:
-        self.last_hits_ranking_text = text or ""
-
-        self.show()
-        self.raise_()
-
-        if sys.platform.startswith("win"):
-            self._set_windows_click_through_topmost()
-
-        self.update()
+        painter.drawText(
+            text_rect,
+            Qt.AlignmentFlag.AlignLeft
+            | Qt.AlignmentFlag.AlignTop
+            | Qt.TextFlag.TextWordWrap,
+            text,
+        )
 
     @staticmethod
     def _event_text(
@@ -479,7 +464,7 @@ class TimelineOverlayWindow(QWidget):
             QPainter.RenderHint.Antialiasing
         )
 
-        # 所有绘制尺寸都乘以统一缩放比例
+        # 所有绘制尺寸都乘以统一缩放比例。
         s = self.scale
 
         def px(value: float) -> int:
@@ -492,7 +477,7 @@ class TimelineOverlayWindow(QWidget):
             px(BASE_OVERLAY_HEIGHT - 4),
         )
 
-        # 主背景
+        # 主背景。
         painter.setPen(
             QPen(
                 QColor(
@@ -520,7 +505,7 @@ class TimelineOverlayWindow(QWidget):
             px(6),
         )
 
-        # 当前游戏时间
+        # 当前游戏时间。
         painter.setFont(
             QFont(
                 "Microsoft YaHei",
@@ -548,7 +533,7 @@ class TimelineOverlayWindow(QWidget):
             self.game_time_text,
         )
 
-        # 状态
+        # 状态。
         painter.setFont(
             QFont(
                 "Microsoft YaHei",
@@ -710,13 +695,16 @@ class TimelineOverlayWindow(QWidget):
             painter.drawRoundedRect(
                 px(row_width_margin),
                 px(y),
-                self._scaled(BASE_TIMELINE_WIDTH - row_width_margin * 2),
+                self._scaled(
+                    BASE_TIMELINE_WIDTH
+                    - row_width_margin * 2
+                ),
                 px(row_height_value),
                 px(row_radius),
                 px(row_radius),
             )
 
-            # 标签
+            # 标签。
             painter.setFont(
                 QFont(
                     "Microsoft YaHei",
@@ -737,7 +725,7 @@ class TimelineOverlayWindow(QWidget):
                 label,
             )
 
-            # 事件文字
+            # 事件文字。
             painter.setFont(
                 QFont(
                     "Microsoft YaHei",
@@ -758,15 +746,17 @@ class TimelineOverlayWindow(QWidget):
             painter.drawText(
                 px(43),
                 px(y),
-                self._scaled(BASE_TIMELINE_WIDTH - 49),
+                self._scaled(
+                    BASE_TIMELINE_WIDTH - 49
+                ),
                 px(row_height_value),
                 Qt.AlignmentFlag.AlignLeft
                 | Qt.AlignmentFlag.AlignVCenter,
                 text,
             )
 
-        self._draw_last_hits_panel(
+        # 绘制右侧普通信息面板。
+        self._draw_info_panel(
             painter,
             px,
         )
-

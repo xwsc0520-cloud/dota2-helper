@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from flask import Flask, jsonify, request
+from flask import Flask, request
 
 from notifier import ChineseVoiceNotifier
 from overlay import OverlayController
@@ -26,8 +26,11 @@ app = Flask(__name__)
 
 state_lock = threading.RLock()
 
-latest_state: Dict[str, Any] = {}
 recent_events = deque(maxlen=50)
+
+game_time_last = 0
+gold_total = 0
+gold_last = 0
 
 
 def load_rules() -> List[Rule]:
@@ -104,119 +107,64 @@ def update_overlay(
     )
 
 
-def get_last_hits_ranking_text(
-    state: Dict[str, Any],
-) -> str:
-    player_data = state.get("player")
-
-    if not isinstance(player_data, dict):
-        return ""
-
-    players = []
-
-    for player_key, player in player_data.items():
-        if not isinstance(player, dict):
-            continue
-
-        # 只处理包含 last_hits 的玩家对象
-        if "last_hits" not in player:
-            continue
-
-        try:
-            last_hits = int(
-                player.get("last_hits", 0)
-            )
-        except (TypeError, ValueError):
-            last_hits = 0
-
-        name = player.get("name")
-
-        if not isinstance(name, str) or not name:
-            name = player_key
-
-        players.append(
-            {
-                "name": name,
-                "last_hits": last_hits,
-            }
-        )
-
-    players.sort(
-        key=lambda player: player["last_hits"],
-        reverse=True,
-    )
-
-    return "\n".join(
-        f"{index}. {player['name']}："
-        f"{player['last_hits']} 补刀"
-        for index, player in enumerate(
-            players,
-            start=1,
-        )
-    )
-
-
 @app.post("/gsi")
 def receive_gsi():
-    global latest_state
-
-    data = request.get_json(silent=True)
-
-    if not isinstance(data, dict):
-        return jsonify(
-            {
-                "ok": False,
-                "error": "请求体必须是 JSON 对象",
-            }
-        ), 400
-
+    data: dict = request.get_json(silent=True)
     triggered_events = []
 
     with state_lock:
-        latest_state = data
+        global game_time_last, gold_total, gold_last
 
-        game_time = get_game_time(data)
+        game_time: int = get_game_time(data)
         in_progress = is_game_in_progress(data)
-        last_hits_ranking_text = get_last_hits_ranking_text(data)
+        if game_time < game_time_last:
+            gold_total = 0
+            gold_last = 0
+        game_time_last = game_time
 
-        if game_time is not None:
-            if in_progress:
-                triggered_events = engine.update(
-                    game_time
+        info = ''
+        gpm = data['player']['gpm']
+        gold = data['player']['gold']
+        if gold > gold_last:
+            gold_total += gold - gold_last
+        gold_last = gold
+
+        info += f'gpm:{gpm}\n'
+        info += f'gold:{gold_total}\n'
+
+        overlay.update_info(info)
+
+        if in_progress:
+            triggered_events = engine.update(game_time)
+
+            for event in triggered_events:
+                recent_events.appendleft(
+                    {
+                        "rule_id": event.rule_id,
+                        "name": event.name,
+                        "message": event.message,
+                        "trigger_time":
+                            event.trigger_time,
+                        "trigger_time_text":
+                            format_game_time(
+                                event.trigger_time
+                            ),
+                        "target_time":
+                            event.target_time,
+                        "target_time_text":
+                            format_game_time(
+                                event.target_time
+                            ),
+                        "received_at":
+                            datetime.now().isoformat(
+                                timespec="seconds"
+                            ),
+                    }
                 )
 
-                for event in triggered_events:
-                    recent_events.appendleft(
-                        {
-                            "rule_id": event.rule_id,
-                            "name": event.name,
-                            "message": event.message,
-                            "trigger_time":
-                                event.trigger_time,
-                            "trigger_time_text":
-                                format_game_time(
-                                    event.trigger_time
-                                ),
-                            "target_time":
-                                event.target_time,
-                            "target_time_text":
-                                format_game_time(
-                                    event.target_time
-                                ),
-                            "received_at":
-                                datetime.now().isoformat(
-                                    timespec="seconds"
-                                ),
-                        }
-                    )
-
-            update_overlay(
-                game_time=game_time,
-                in_progress=in_progress,
-            )
-
-        overlay.update_last_hits_ranking(
-            last_hits_ranking_text
+        update_overlay(
+            game_time=game_time,
+            in_progress=in_progress,
         )
 
     # 锁外播报，避免 TTS 影响 GSI 请求。

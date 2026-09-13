@@ -1,48 +1,104 @@
 [
   {
-    "id": "开始",
-    "first_time": 10,
-    "message": "提示系统工作正常"
-  },
-  {
-    "id": "大药",
-    "first_time": 120,
+    "id": "0_20",
+    "first_time": 20,
     "message": "提醒爵爷购买大药"
   },
   {
-    "id": "莲花",
+    "id": "1",
+    "first_time": 60,
+    "warning": 10,
+    "message": "十秒后野怪刷新"
+  },
+  {
+    "id": "2",
+    "first_time": 120,
+    "warning": 10,
+    "message": "十秒后野怪刷新"
+  },
+  {
+    "id": "3",
     "first_time": 180,
-    "interval": 180,
-    "last_time": 900,
     "warning": 10,
-    "message": "十秒后莲花刷新"
+    "message": "十秒后莲花和野怪刷新"
   },
   {
-    "id": "赏金符",
+    "id": "4",
     "first_time": 240,
-    "interval": 240,
-    "last_time": 900,
     "warning": 10,
-    "message": "十秒后赏金符刷新"
+    "message": "十秒后赏金符和野怪刷新"
   },
   {
-    "id": "智慧符",
-    "first_time": 420,
-    "interval": 420,
+    "id": "5",
+    "first_time": 300,
     "warning": 10,
-    "message": "十秒后智慧符刷新"
+    "message": "十秒后野怪刷新"
   },
   {
-    "id": "河道符",
+    "id": "6",
     "first_time": 360,
-    "interval": 120,
     "warning": 10,
-    "message": "十秒后河道符刷新"
+    "message": "十秒后河道符、莲花和野怪刷新"
   },
   {
-    "id": "15_",
-    "first_time": 370,
+    "id": "7",
+    "first_time": 420,
+    "warning": 10,
+    "message": "十秒后智慧符和野怪刷新"
+  },
+  {
+    "id": "8",
+    "first_time": 480,
+    "warning": 10,
+    "message": "十秒后河道符、赏金符和野怪刷新"
+  },
+  {
+    "id": "9",
+    "first_time": 540,
+    "warning": 10,
+    "message": "十秒后莲花和野怪刷新"
+  },
+  {
+    "id": "10",
+    "first_time": 600,
+    "warning": 10,
+    "message": "十秒后河道符和野怪刷新"
+  },
+  {
+    "id": "11",
+    "first_time": 660,
+    "warning": 10,
+    "message": "十秒后野怪刷新"
+  },
+   {
+    "id": "12",
+    "first_time": 720,
+    "warning": 10,
+    "message": "十秒后河道符、莲花、赏金符和野怪刷新"
+  },
+  {
+    "id": "13",
+    "first_time": 780,
+    "warning": 10,
+    "message": "十秒后野怪刷新"
+  },
+  {
+    "id": "14",
+    "first_time": 840,
+    "warning": 10,
+    "message": "十秒后经验符、河道符和野怪刷新"
+  },
+  {
+    "id": "15_1",
+    "first_time": 900,
     "interval": 60,
-    "message": "小地图，猜位置，看装备，思考怎么打"
+    "warning": 10,
+    "message": "十秒后野怪刷新"
+  },
+  {
+    "id": "15_2",
+    "first_time": 920,
+    "interval": 60,
+    "message": "三路线、七对野、插眼"
   }
 ]

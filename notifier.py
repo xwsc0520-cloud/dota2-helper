@@ -18,19 +18,21 @@ class ChineseVoiceNotifier:
     """
 
     def __init__(
-        self,
-        enabled: bool = True,
-        rate: int = 185,
-        volume: float = 1.0,
-        duplicate_interval: float = 0.8,
+            self,
+            enabled: bool = True,
+            rate: int = 185,
+            volume: float = 1.0,
+            duplicate_interval: float = 0.8,
+            chime_enabled: bool = True,
+            chime_delay: float = 0.08,
     ):
         self.enabled = enabled
         self.rate = rate
-        self.volume = max(
-            0.0,
-            min(1.0, volume),
-        )
+        self.volume = max(0.0, min(1.0, volume))
         self.duplicate_interval = duplicate_interval
+
+        self.chime_enabled = chime_enabled
+        self.chime_delay = chime_delay
 
         self._queue: queue.Queue[
             Optional[str]
@@ -45,6 +47,28 @@ class ChineseVoiceNotifier:
 
         self._last_text = ""
         self._last_time = 0.0
+
+    def _play_chime(self) -> None:
+        if not self.chime_enabled:
+            return
+
+        try:
+            if sys.platform == "win32":
+                import winsound
+
+                winsound.Beep(2000, 600)
+            else:
+                print("\a", end="", flush=True)
+
+            if self.chime_delay > 0:
+                time.sleep(self.chime_delay)
+
+        except Exception as exc:
+            print(
+                f"[提示音警告] 播放失败：{exc}",
+                file=sys.stderr,
+                flush=True,
+            )
 
     def start(self) -> None:
         with self._start_lock:
@@ -120,6 +144,8 @@ class ChineseVoiceNotifier:
             f"[语音开始] {text}",
             flush=True,
         )
+
+        self._play_chime()
 
         try:
             import pyttsx3
