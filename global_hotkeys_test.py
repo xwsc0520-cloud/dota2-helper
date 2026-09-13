@@ -1,31 +1,31 @@
 import global_hotkeys
 
-global_hotkeys.bind('alt+q', 'qqqrd')
-global_hotkeys.bind('alt+w', 'qwwrd')
-global_hotkeys.bind('alt+e', 'qqerd')
-global_hotkeys.bind('alt+r', 'qwerd')
+global_hotkeys.bind('lalt+q', 'qqqrd')
+global_hotkeys.bind('lalt+w', 'qwwrd')
+global_hotkeys.bind('lalt+e', 'qqerd')
+global_hotkeys.bind('lalt+r', 'qwerd')
 
-global_hotkeys.bind('alt+a', 'eeerd')
-global_hotkeys.bind('alt+s', 'weerd')
-global_hotkeys.bind('alt+d', 'wwwrd')
+global_hotkeys.bind('lalt+a', 'eeerd')
+global_hotkeys.bind('lalt+s', 'weerd')
+global_hotkeys.bind('lalt+d', 'wwwrd')
 
-global_hotkeys.bind('alt+z', 'qqwrd')
-global_hotkeys.bind('alt+x', 'wwerd')
-global_hotkeys.bind('alt+c', 'qeerd')
+global_hotkeys.bind('lalt+z', 'qqwrd')
+global_hotkeys.bind('lalt+x', 'wwerd')
+global_hotkeys.bind('lalt+c', 'qeerd')
 
 
-global_hotkeys.bind('shift+q', 'qqqr')
-global_hotkeys.bind('shift+w', 'qwwr')
-global_hotkeys.bind('shift+e', 'qqer')
-global_hotkeys.bind('shift+r', 'qwer')
+global_hotkeys.bind('lshift+q', 'qqqr')
+global_hotkeys.bind('lshift+w', 'qwwr')
+global_hotkeys.bind('lshift+e', 'qqer')
+global_hotkeys.bind('lshift+r', 'qwer')
 
-global_hotkeys.bind('shift+a', 'eeer')
-global_hotkeys.bind('shift+s', 'weer')
-global_hotkeys.bind('shift+d', 'wwwr')
+global_hotkeys.bind('lshift+a', 'eeer')
+global_hotkeys.bind('lshift+s', 'weer')
+global_hotkeys.bind('lshift+d', 'wwwr')
 
-global_hotkeys.bind('shift+z', 'qqwr')
-global_hotkeys.bind('shift+x', 'wwer')
-global_hotkeys.bind('shift+c', 'qeer')
+global_hotkeys.bind('lshift+z', 'qqwr')
+global_hotkeys.bind('lshift+x', 'wwer')
+global_hotkeys.bind('lshift+c', 'qeer')
 
 
 global_hotkeys.run()

@@ -253,20 +253,71 @@ SPECIAL_KEYS = {
 
 
 MODIFIER_ALIASES = {
+    # Alt
     "alt": "alt",
     "option": "alt",
+    "lalt": "lalt",
+    "leftalt": "lalt",
+    "left alt": "lalt",
+    "ralt": "ralt",
+    "rightalt": "ralt",
+    "right alt": "ralt",
 
+    # Ctrl
     "ctrl": "ctrl",
     "control": "ctrl",
+    "lctrl": "lctrl",
+    "leftctrl": "lctrl",
+    "left ctrl": "lctrl",
+    "rctrl": "rctrl",
+    "rightctrl": "rctrl",
+    "right ctrl": "rctrl",
 
+    # Shift
     "shift": "shift",
+    "lshift": "lshift",
+    "leftshift": "lshift",
+    "left shift": "lshift",
+    "rshift": "rshift",
+    "rightshift": "rshift",
+    "right shift": "rshift",
 }
 
 
 MODIFIER_ORDER = {
     "ctrl": 0,
-    "shift": 1,
-    "alt": 2,
+    "lctrl": 1,
+    "rctrl": 2,
+
+    "shift": 3,
+    "lshift": 4,
+    "rshift": 5,
+
+    "alt": 6,
+    "lalt": 7,
+    "ralt": 8,
+}
+
+MODIFIER_FAMILIES = {
+    "shift": {"lshift", "rshift"},
+    "ctrl": {"lctrl", "rctrl"},
+    "alt": {"lalt", "ralt"},
+}
+
+
+# 每个修饰键属于哪个家族
+MODIFIER_TO_FAMILY = {
+    "shift": "shift",
+    "lshift": "shift",
+    "rshift": "shift",
+
+    "ctrl": "ctrl",
+    "lctrl": "ctrl",
+    "rctrl": "ctrl",
+
+    "alt": "alt",
+    "lalt": "alt",
+    "ralt": "alt",
 }
 
 
@@ -696,13 +747,14 @@ class GlobalHotkeys:
         if len(parts) < 2:
             raise ValueError(
                 "快捷键必须包含修饰键和触发键，"
-                "例如 'shift+q' 或 'ctrl+shift+w'"
+                "例如 'lshift+q' 或 'lctrl+lshift+w'"
             )
 
         trigger_key = parts[-1]
         modifier_parts = parts[:-1]
 
         modifiers = set()
+        used_families = {}
 
         for part in modifier_parts:
             modifier = MODIFIER_ALIASES.get(part)
@@ -710,7 +762,9 @@ class GlobalHotkeys:
             if modifier is None:
                 raise ValueError(
                     f"不支持的修饰键：{part!r}；"
-                    "目前支持 alt、ctrl、shift"
+                    "支持 alt/lalt/ralt、"
+                    "ctrl/lctrl/rctrl、"
+                    "shift/lshift/rshift"
                 )
 
             if modifier in modifiers:
@@ -718,12 +772,24 @@ class GlobalHotkeys:
                     f"修饰键重复：{part!r}"
                 )
 
+            family = MODIFIER_TO_FAMILY[modifier]
+
+            # 不允许同一家族中混用通用名称和左右名称，例如：
+            # shift+lshift+q
+            previous = used_families.get(family)
+
+            if previous is not None:
+                if previous == family or modifier == family:
+                    raise ValueError(
+                        f"不能混用通用修饰键和左右修饰键："
+                        f"{previous!r}、{modifier!r}"
+                    )
+
+            used_families[family] = modifier
             modifiers.add(modifier)
 
         if not modifiers:
-            raise ValueError(
-                "快捷键至少需要一个修饰键"
-            )
+            raise ValueError("快捷键至少需要一个修饰键")
 
         return modifiers, trigger_key
 
@@ -780,29 +846,31 @@ class GlobalHotkeys:
 
     @staticmethod
     def _modifier_vk_to_name(vk_code):
-        if vk_code in (
-            VK_LSHIFT,
-            VK_RSHIFT,
-        ):
-            return "shift"
+        """
+        把具体虚拟键码转换成左右独立的名称。
+        """
 
-        if vk_code in (
-            VK_LCONTROL,
-            VK_RCONTROL,
-        ):
-            return "ctrl"
+        modifier_names = {
+            VK_LSHIFT: "lshift",
+            VK_RSHIFT: "rshift",
 
-        if vk_code in (
-            VK_LMENU,
-            VK_RMENU,
-        ):
-            return "alt"
+            VK_LCONTROL: "lctrl",
+            VK_RCONTROL: "rctrl",
 
-        return None
+            VK_LMENU: "lalt",
+            VK_RMENU: "ralt",
+        }
+
+        return modifier_names.get(vk_code)
 
     def _get_active_modifiers(self):
         """
-        返回当前物理按下的修饰键名称集合。
+        返回当前物理按下的左右修饰键。
+
+        例如：
+            左 Shift：{"lshift"}
+            右 Shift：{"rshift"}
+            左 Ctrl + 右 Shift：{"lctrl", "rshift"}
         """
 
         active = set()
@@ -814,6 +882,148 @@ class GlobalHotkeys:
                 active.add(name)
 
         return active
+
+    @staticmethod
+    def _modifiers_match(required_modifiers, active_modifiers):
+        """
+        判断当前物理修饰键是否符合注册要求。
+
+        规则：
+
+        shift：
+            左右 Shift 任意一个或两个都可以。
+
+        lshift：
+            只允许左 Shift。
+
+        rshift：
+            只允许右 Shift。
+
+        lshift+rshift：
+            要求左右 Shift 同时按下。
+        """
+
+        for family, physical_sides in MODIFIER_FAMILIES.items():
+            required_in_family = {
+                modifier
+                for modifier in required_modifiers
+                if MODIFIER_TO_FAMILY[modifier] == family
+            }
+
+            active_in_family = (
+                    active_modifiers & physical_sides
+            )
+
+            # 映射没有要求这个家族，但物理上按下了该家族，
+            # 视为存在额外修饰键，不匹配。
+            if not required_in_family:
+                if active_in_family:
+                    return False
+
+                continue
+
+            # 使用了通用修饰键，例如 shift。
+            if family in required_in_family:
+                if not active_in_family:
+                    return False
+
+                # 通用 shift 接受左、右或左右同时按下。
+                continue
+
+            # 使用了左右指定修饰键。
+            #
+            # 例如要求 {"lshift"} 时：
+            # active 必须正好也是 {"lshift"}。
+            if required_in_family != active_in_family:
+                return False
+
+        return True
+
+    def _find_binding(
+            self,
+            trigger_vk,
+            active_modifiers,
+    ):
+        """
+        查找符合当前按键状态的映射。
+
+        如果同时存在：
+
+            shift+q
+            lshift+q
+
+        按下左 Shift+Q 时，优先使用更具体的 lshift+q。
+        """
+
+        candidates = []
+
+        for (
+                required_modifiers,
+                registered_trigger_vk,
+        ), binding in self._mappings.items():
+
+            if registered_trigger_vk != trigger_vk:
+                continue
+
+            if not self._modifiers_match(
+                    required_modifiers,
+                    active_modifiers,
+            ):
+                continue
+
+            # 左右明确的修饰键比通用修饰键更具体。
+            specificity = sum(
+                1
+                for modifier in required_modifiers
+                if modifier
+                in {
+                    "lshift",
+                    "rshift",
+                    "lctrl",
+                    "rctrl",
+                    "lalt",
+                    "ralt",
+                }
+            )
+
+            candidates.append(
+                (
+                    specificity,
+                    binding,
+                )
+            )
+
+        if not candidates:
+            return None
+
+        candidates.sort(
+            key=lambda item: item[0],
+            reverse=True,
+        )
+
+        return candidates[0][1]
+
+    def _should_suppress_modifier(
+            self,
+            physical_modifier,
+    ):
+        """
+        判断某个左右物理修饰键是否被映射使用。
+
+        例如：
+            注册 shift+q：左右 Shift 都拦截
+            注册 lshift+q：只拦截左 Shift
+            注册 rshift+q：只拦截右 Shift
+        """
+
+        family = MODIFIER_TO_FAMILY[
+            physical_modifier
+        ]
+
+        return (
+                physical_modifier in self._used_modifiers
+                or family in self._used_modifiers
+        )
 
     # ========================================================
     # SendInput
@@ -954,10 +1164,10 @@ class GlobalHotkeys:
         )
 
     def _hook_callback(
-        self,
-        n_code,
-        w_param,
-        l_param,
+            self,
+            n_code,
+            w_param,
+            l_param,
     ):
         if n_code < 0:
             return self._call_next_hook(
@@ -983,10 +1193,7 @@ class GlobalHotkeys:
             WM_SYSKEYUP,
         )
 
-        # SendInput 创建的事件会携带 LLKHF_INJECTED。
-        #
-        # 这些事件必须放行，并且不能再次参与快捷键检测，
-        # 否则程序可能触发自己。
+        # 放行 SendInput 注入事件，避免程序触发自己。
         if event.flags & LLKHF_INJECTED:
             return self._call_next_hook(
                 n_code,
@@ -996,16 +1203,16 @@ class GlobalHotkeys:
 
         vk_code = event.vkCode
 
-        # ----------------------------------------------------
-        # 处理修饰键
-        # ----------------------------------------------------
+        # ========================================================
+        # 处理左右修饰键
+        # ========================================================
 
         normalized_modifier_vk = (
             self._normalize_modifier_vk(event)
         )
 
         if normalized_modifier_vk is not None:
-            modifier_name = (
+            physical_modifier = (
                 self._modifier_vk_to_name(
                     normalized_modifier_vk
                 )
@@ -1021,14 +1228,13 @@ class GlobalHotkeys:
                     normalized_modifier_vk
                 )
 
-            # 只要某个修饰键被任意快捷键映射使用，
-            # 就全局吞掉这个修饰键。
-            #
-            # 例如注册了 shift+q：
-            # - 程序内部仍能检测物理 Shift
-            # - 前台程序收不到物理 Shift
-            # - 自动输入的 qqqrd 不会变成大写
-            if modifier_name in self._used_modifiers:
+            if (
+                    physical_modifier is not None
+                    and self._should_suppress_modifier(
+                physical_modifier
+            )
+            ):
+                # 只拦截映射实际使用到的一侧。
                 return 1
 
             return self._call_next_hook(
@@ -1037,43 +1243,36 @@ class GlobalHotkeys:
                 l_param,
             )
 
-        # ----------------------------------------------------
-        # 处理已经触发但尚未松开的触发键
-        # ----------------------------------------------------
+        # ========================================================
+        # 处理已经触发但还没松开的触发键
+        # ========================================================
 
         if vk_code in self._consumed_keys:
             if is_key_up:
                 self._consumed_keys.discard(vk_code)
 
-            # 吞掉：
-            # 1. 按住触发键产生的自动重复
-            # 2. 触发键对应的松开事件
+            # 吞掉自动重复和对应的松开事件。
             return 1
 
-        # ----------------------------------------------------
-        # 检查新的一次按键
-        # ----------------------------------------------------
+        # ========================================================
+        # 查找快捷键映射
+        # ========================================================
 
         if is_key_down:
             active_modifiers = (
                 self._get_active_modifiers()
             )
 
-            mapping_key = (
-                frozenset(active_modifiers),
+            binding = self._find_binding(
                 vk_code,
+                active_modifiers,
             )
 
-            binding = self._mappings.get(mapping_key)
-
             if binding is not None:
-                output, interval = binding
-
+                # 如果使用的是支持 interval 的版本，
+                # binding 为 (output, interval)。
                 self._consumed_keys.add(vk_code)
-
-                self._action_queue.put(
-                    (output, interval)
-                )
+                self._action_queue.put(binding)
 
                 return 1
 
