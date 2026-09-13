@@ -9,6 +9,7 @@ import signal
 import threading
 from ctypes import wintypes
 import time
+import random
 
 
 # ============================================================
@@ -415,6 +416,10 @@ class GlobalHotkeys:
             self._hook_callback
         )
 
+        self._run_thread = None
+        self._started_event = threading.Event()
+        self._stopped_event = threading.Event()
+
     # ========================================================
     # 公共接口
     # ========================================================
@@ -511,6 +516,80 @@ class GlobalHotkeys:
 
         return self
 
+    def start(self, timeout=5.0):
+        """
+        在后台线程启动监听，不阻塞调用线程。
+
+        返回 self，可以链式调用。
+        """
+
+        if self._running:
+            return
+
+        if self._run_thread is not None and self._run_thread.is_alive():
+            raise RuntimeError("快捷键监听线程已经存在")
+
+        if not self._mappings:
+            raise RuntimeError("尚未注册任何快捷键")
+
+        self._started_event.clear()
+        self._stopped_event.clear()
+
+        self._run_thread = threading.Thread(
+            target=self._background_run,
+            name="GlobalHotkeyMessageThread",
+            daemon=True,
+        )
+
+        self._run_thread.start()
+
+        if not self._started_event.wait(timeout):
+            raise TimeoutError("启动全局快捷键监听超时")
+
+        return self
+
+    def _background_run(self):
+        try:
+            self.run()
+        except Exception as error:
+            print(f"全局快捷键监听异常：{error}")
+            self._started_event.set()
+        finally:
+            self._stopped_event.set()
+
+    def wait(self, timeout=None):
+        """
+        等待监听停止。
+
+        timeout:
+            None 表示一直等待；
+            数字表示最多等待多少秒。
+
+        返回：
+            True：已经停止
+            False：等待超时
+        """
+
+        return self._stopped_event.wait(timeout)
+
+    def join(self, timeout=None):
+        """
+        等待后台监听线程结束。
+        """
+
+        thread = self._run_thread
+
+        if thread is not None:
+            thread.join(timeout)
+
+            if not thread.is_alive():
+                self._run_thread = None
+                return True
+
+            return False
+
+        return True
+
     def run(self):
         """
         启动全局快捷键监听。
@@ -520,7 +599,7 @@ class GlobalHotkeys:
         """
 
         if self._running:
-            raise RuntimeError("快捷键监听已经启动")
+            return
 
         if not self._mappings:
             raise RuntimeError("尚未注册任何快捷键")
@@ -538,6 +617,8 @@ class GlobalHotkeys:
             self._message_thread_id = (
                 kernel32.GetCurrentThreadId()
             )
+
+            self._started_event.set()
 
             # signal.signal() 只能在 Python 主线程调用。
             if (
@@ -559,6 +640,8 @@ class GlobalHotkeys:
             self._message_loop()
 
         finally:
+            self._started_event.set()
+
             if signal_handler_installed:
                 signal.signal(
                     signal.SIGINT,
@@ -813,7 +896,8 @@ class GlobalHotkeys:
 
             # 最后一个字符后面不再等待
             if interval > 0 and index < len(code_units) - 1:
-                time.sleep(interval)
+                r = random.random() * interval * 0.5
+                time.sleep(interval + r)
 
     # ========================================================
     # 自动输入工作线程
@@ -1079,6 +1163,8 @@ class GlobalHotkeys:
         self._message_thread_id = None
         self._running = False
 
+        self._stopped_event.set()
+
         print("全局快捷键监听已停止")
 
     # ========================================================
@@ -1198,3 +1284,26 @@ def stop():
     """
 
     _default_manager.stop()
+
+def start(timeout=5.0):
+    """
+    在后台线程启动默认快捷键管理器。
+    """
+
+    return _default_manager.start(timeout=timeout)
+
+
+def wait(timeout=None):
+    """
+    等待默认快捷键管理器停止。
+    """
+
+    return _default_manager.wait(timeout=timeout)
+
+
+def join(timeout=None):
+    """
+    等待默认快捷键后台线程结束。
+    """
+
+    return _default_manager.join(timeout=timeout)

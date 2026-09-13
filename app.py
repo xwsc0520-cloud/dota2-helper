@@ -62,38 +62,34 @@ voice = ChineseVoiceNotifier(
 overlay = OverlayController()
 overlay.start()
 
-kaer = False
-if kaer:
-    import global_hotkeys
+import global_hotkeys
 
-    global_hotkeys.bind('alt+q', 'qqqrd')
-    global_hotkeys.bind('alt+w', 'qwwrd')
-    global_hotkeys.bind('alt+e', 'qqerd')
-    global_hotkeys.bind('alt+r', 'qwerd')
+global_hotkeys.bind('alt+q', 'qqqrd')
+global_hotkeys.bind('alt+w', 'qwwrd')
+global_hotkeys.bind('alt+e', 'qqerd')
+global_hotkeys.bind('alt+r', 'qwerd')
 
-    global_hotkeys.bind('alt+a', 'eeerd')
-    global_hotkeys.bind('alt+s', 'weerd')
-    global_hotkeys.bind('alt+d', 'wwwrd')
+global_hotkeys.bind('alt+a', 'eeerd')
+global_hotkeys.bind('alt+s', 'weerd')
+global_hotkeys.bind('alt+d', 'wwwrd')
 
-    global_hotkeys.bind('alt+z', 'qqwrd')
-    global_hotkeys.bind('alt+x', 'wwerd')
-    global_hotkeys.bind('alt+c', 'qeerd')
+global_hotkeys.bind('alt+z', 'qqwrd')
+global_hotkeys.bind('alt+x', 'wwerd')
+global_hotkeys.bind('alt+c', 'qeerd')
 
 
-    global_hotkeys.bind('shift+q', 'qqqr')
-    global_hotkeys.bind('shift+w', 'qwwr')
-    global_hotkeys.bind('shift+e', 'qqer')
-    global_hotkeys.bind('shift+r', 'qwer')
+global_hotkeys.bind('shift+q', 'qqqr')
+global_hotkeys.bind('shift+w', 'qwwr')
+global_hotkeys.bind('shift+e', 'qqer')
+global_hotkeys.bind('shift+r', 'qwer')
 
-    global_hotkeys.bind('shift+a', 'eeer')
-    global_hotkeys.bind('shift+s', 'weer')
-    global_hotkeys.bind('shift+d', 'wwwr')
+global_hotkeys.bind('shift+a', 'eeer')
+global_hotkeys.bind('shift+s', 'weer')
+global_hotkeys.bind('shift+d', 'wwwr')
 
-    global_hotkeys.bind('shift+z', 'qqwr')
-    global_hotkeys.bind('shift+x', 'wwer')
-    global_hotkeys.bind('shift+c', 'qeer')
-
-    global_hotkeys.run()
+global_hotkeys.bind('shift+z', 'qqwr')
+global_hotkeys.bind('shift+x', 'wwer')
+global_hotkeys.bind('shift+c', 'qeer')
 
 def timeline_event_to_dict(
     event: TimelineEvent,
@@ -165,6 +161,13 @@ def receive_gsi():
         info += f'gold:{gold_total}\n'
 
         overlay.update_info(info)
+
+        hero_name = data['hero']['name']
+        if hero_name == 'npc_dota_hero_invoker':
+            global_hotkeys.start()
+        else:
+            global_hotkeys.stop()
+            global_hotkeys.join()
 
         if in_progress:
             triggered_events = engine.update(game_time)

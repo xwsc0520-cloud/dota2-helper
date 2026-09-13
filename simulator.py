@@ -589,7 +589,8 @@ class SimulatorState:
             },
             "hero": {
                 "id": 1,
-                "name": "npc_dota_hero_antimage",
+                # "name": "npc_dota_hero_hoodwink",
+                "name": "npc_dota_hero_invoker",
                 "level": max(
                     1,
                     min(
