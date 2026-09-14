@@ -62,35 +62,6 @@ voice = ChineseVoiceNotifier(
 overlay = OverlayController()
 overlay.start()
 
-import global_hotkeys
-
-global_hotkeys.bind('lalt+q', 'qqqrd')
-global_hotkeys.bind('lalt+w', 'qwwrd')
-global_hotkeys.bind('lalt+e', 'qqerd')
-global_hotkeys.bind('lalt+r', 'qwerd')
-
-global_hotkeys.bind('lalt+a', 'eeerd')
-global_hotkeys.bind('lalt+s', 'weerd')
-global_hotkeys.bind('lalt+d', 'wwwrd')
-
-global_hotkeys.bind('lalt+z', 'qqwrd')
-global_hotkeys.bind('lalt+x', 'wwerd')
-global_hotkeys.bind('lalt+c', 'qeerd')
-
-
-global_hotkeys.bind('lshift+q', 'qqqr')
-global_hotkeys.bind('lshift+w', 'qwwr')
-global_hotkeys.bind('lshift+e', 'qqer')
-global_hotkeys.bind('lshift+r', 'qwer')
-
-global_hotkeys.bind('lshift+a', 'eeer')
-global_hotkeys.bind('lshift+s', 'weer')
-global_hotkeys.bind('lshift+d', 'wwwr')
-
-global_hotkeys.bind('lshift+z', 'qqwr')
-global_hotkeys.bind('lshift+x', 'wwer')
-global_hotkeys.bind('lshift+c', 'qeer')
-
 def timeline_event_to_dict(
     event: TimelineEvent,
 ) -> Dict[str, Any]:
@@ -164,10 +135,7 @@ def receive_gsi():
 
         hero_name = data['hero']['name']
         if hero_name == 'npc_dota_hero_invoker':
-            global_hotkeys.start()
-        else:
-            global_hotkeys.stop()
-            global_hotkeys.join()
+            pass
 
         if in_progress:
             triggered_events = engine.update(game_time)
