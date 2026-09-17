@@ -9,7 +9,7 @@ SetWorkingDir(A_ScriptDir)
 SetTitleMatchMode(2)
 DetectHiddenWindows(true)
 
-delayTime := 30
+delayTime := 40
 
 orbQ := "{F1}"
 orbW := "{F2}"
@@ -182,7 +182,7 @@ ProcessComboQueue()
 
             ; 最后一个键之后不延时
             if index < combo.Length
-                Sleep(delayTime)
+                randomDelay(delayTime)
         }
     }
 
@@ -193,4 +193,14 @@ ProcessComboQueue()
         queueRunning := true
         SetTimer(ProcessComboQueue, -1)
     }
+}
+
+; 随机延时
+randomDelay(baseTime)
+{
+    minTime := Round(baseTime * 0.9)
+    maxTime := Round(baseTime * 1.1)
+    actualTime := Random(minTime, maxTime)
+
+    Sleep(actualTime)
 }
