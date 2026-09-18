@@ -1,249 +1,9 @@
-#Requires AutoHotkey v2.0
-#SingleInstance Force
-
 SendMode("Input")
 SetNumLockState("AlwaysOn")
 SetWorkingDir(A_ScriptDir)
 
 SetTitleMatchMode(2)
 DetectHiddenWindows(true)
-
-delayTime := 50
-
-orbQ := "7"
-orbW := "8"
-orbE := "9"
-invokeKey := "0"
-
-comboQueue := []
-queueRunning := false
-
-$d::AddCombo(["d"])
-$f::AddCombo(["f"])
-
-$1::AddCombo(["1"])
-$2::AddCombo(["2"])
-$3::AddCombo(["3"])
-
-
-$q up::
-{
-    global orbQ, invokeKey
-
-    AddCombo([
-        orbQ,
-        orbQ,
-        orbQ,
-        invokeKey
-    ])
-}
-
-$w::
-{
-    global orbQ, orbW, invokeKey
-
-    AddCombo([
-        orbQ,
-        orbW,
-        orbW,
-        invokeKey
-    ])
-}
-
-$e::
-{
-    global orbQ, orbE, invokeKey
-
-    AddCombo([
-        orbQ,
-        orbQ,
-        orbE,
-        invokeKey
-    ])
-}
-
-$r::
-{
-    global orbQ, orbW, orbE, invokeKey
-
-    AddCombo([
-        orbQ,
-        orbW,
-        orbE,
-        invokeKey
-    ])
-}
-
-$z::
-{
-    global orbQ, orbW, orbE, invokeKey
-
-    AddCombo([
-        orbE,
-        orbE,
-        orbE,
-        invokeKey
-    ])
-}
-
-$x::
-{
-    global orbQ, orbW, orbE, invokeKey
-
-    AddCombo([
-        orbW,
-        orbE,
-        orbE,
-        invokeKey
-    ])
-}
-
-$c::
-{
-    global orbQ, orbW, orbE, invokeKey
-
-    AddCombo([
-        orbW,
-        orbW,
-        orbE,
-        invokeKey
-    ])
-}
-
-$v::
-{
-    global orbQ, orbW, orbE, invokeKey
-
-    AddCombo([
-        orbQ,
-        orbE,
-        orbE,
-        invokeKey,
-        "d",
-    ])
-}
-
-$Tab::
-{
-    global orbQ, orbW, orbE, invokeKey
-
-    AddCombo([
-        orbW,
-        orbW,
-        orbW,
-        invokeKey
-    ])
-}
-
-$LShift::
-{
-    global orbQ, orbW, orbE, invokeKey
-
-    AddCombo([
-        orbQ,
-        orbQ,
-        orbW,
-        invokeKey,
-        "d",
-    ])
-}
-
-$!z::
-{
-    global orbQ, orbW, orbE, invokeKey
-    KeyWait("z")
-    KeyWait("LAlt")
-    KeyWait("z")
-    KeyWait("LAlt")
-    AddCombo([
-        "1",
-        "2",
-        "f",
-        "d",
-        orbQ,
-        orbW,
-        orbE,
-        invokeKey,
-    ])
-}
-
-$!x::
-{
-    global orbQ, orbW, orbE, invokeKey
-    KeyWait("z")
-    KeyWait("LAlt")
-    KeyWait("z")
-    KeyWait("LAlt")
-    AddCombo([
-        "2",
-        "1",
-        "f",
-        "d",
-        "3",
-
-        "f",
-        "d",
-        "1",
-        orbQ,
-        orbW,
-        orbE,
-        invokeKey,
-    ])
-}
-
-
-
-; 将一个完整组合添加到队列
-AddCombo(combo)
-{
-    global comboQueue, queueRunning
-
-    comboQueue.Push(combo)
-
-    if !queueRunning {
-        queueRunning := true
-        SetTimer(ProcessComboQueue, -1)
-    }
-}
-
-; 按加入顺序处理队列
-ProcessComboQueue()
-{
-    global comboQueue, queueRunning, delayTime
-
-    while comboQueue.Length > 0 {
-        combo := comboQueue.RemoveAt(1)
-
-        for index, key in combo {
-            Send("{Blind}" key)
-            if key == invokeKey || key == "d" || key == "f" || key == "3" {
-                randomDelay(100)
-            } else {
-                randomDelay(delayTime)
-            }
-        }
-    }
-
-    queueRunning := false
-
-    ; 防止恰好在 queueRunning 关闭时又有新组合加入
-    if comboQueue.Length > 0 {
-        queueRunning := true
-        SetTimer(ProcessComboQueue, -1)
-    }
-}
-
-; 随机延时
-randomDelay(baseTime)
-{
-    minTime := Round(baseTime * 0.9)
-    maxTime := Round(baseTime * 1.1)
-    actualTime := Random(minTime, maxTime)
-
-    Sleep(actualTime)
-}
-
-
 
 ; ============================================================
 ; 配置
@@ -253,7 +13,7 @@ randomDelay(baseTime)
 DEFAULT_LONG_MS := 500
 
 ; 双击最大间隔，单位：毫秒
-DEFAULT_DOUBLE_MS := 300
+DEFAULT_DOUBLE_MS := 200
 
 
 ; ============================================================
@@ -265,16 +25,6 @@ gesture := KeyGesture(
     DEFAULT_DOUBLE_MS
 )
 
-
-
-; ============================================================
-; 设置统一回调
-; ============================================================
-
-gesture.OnSingle := OnSingle
-gesture.OnDouble := OnDouble
-gesture.OnLong := OnLong
-
 ; ============================================================
 ; 通用按键手势类
 ; ============================================================
@@ -283,7 +33,7 @@ class KeyGesture
 {
     Prefix := "$"
 
-    __New(defaultLongMs := 500, defaultDoubleMs := 300)
+    __New(defaultLongMs, defaultDoubleMs)
     {
         this.DefaultLongMs   := defaultLongMs
         this.DefaultDoubleMs := defaultDoubleMs
@@ -452,35 +202,101 @@ class KeyGesture
 }
 
 
-gesture.Add(
-    "a",
-    800, ; 长按超过 800 ms
-    400  ; 双击间隔 400 ms
-)
+
+comboQueue := []
+queueRunning := false
+
+; 默认按键后的随机延时
+global delayTime := 50
 
 
-OnSingle(key)
+; 添加一个组合
+; combo 可以包含：
+;   "a"              按键
+;   {key: "a"}       按键
+;   {delay: 100}     延时
+;   {sleep: 100}     延时，和 delay 等价
+AddCombo(combo)
 {
-    switch key
-    {
-        case "a":
-            Send "b"
+    global comboQueue, queueRunning
 
+    ; 复制一份，避免外部继续修改原数组
+    actions := []
+
+    for item in combo {
+        if IsObject(item) {
+            if item.HasOwnProp("key") {
+                actions.Push({
+                    type: "key",
+                    value: item.key
+                })
+            } else if item.HasOwnProp("delay") {
+                actions.Push({
+                    type: "delay",
+                    value: item.delay
+                })
+            } else if item.HasOwnProp("sleep") {
+                actions.Push({
+                    type: "delay",
+                    value: item.sleep
+                })
+            }
+        } else {
+            ; 普通字符串直接视为按键
+            actions.Push({
+                type: "key",
+                value: item
+            })
+        }
+    }
+
+    comboQueue.Push(actions)
+
+    if !queueRunning {
+        queueRunning := true
+        SetTimer(ProcessComboQueue, -1)
     }
 }
 
-OnDouble(key)
-{
-    switch key
-    {
-        case "a":
-            Send "bb"
 
+; 按加入顺序处理队列
+ProcessComboQueue()
+{
+    global comboQueue, queueRunning, delayTime, invokeKey
+
+    try {
+        while comboQueue.Length > 0 {
+            combo := comboQueue.RemoveAt(1)
+
+            for action in combo {
+                switch action.type {
+                    case "key":
+                        key := action.value
+                        Send("{Blind}" key)
+                        RandomDelay(delayTime)
+                    case "delay":
+                        ; 手动指定的延时通常不需要再次随机化
+                        RandomDelay(action.value)
+                }
+            }
+        }
+    } finally {
+        queueRunning := false
+
+        ; 防止处理结束前恰好又加入了任务
+        if comboQueue.Length > 0 {
+            queueRunning := true
+            SetTimer(ProcessComboQueue, -1)
+        }
     }
 }
 
-OnLong(key, duration)
+
+; 随机延时
+RandomDelay(baseTime)
 {
-    if key = "a"
-        Send "bbb"
+    minTime := Max(0, Round(baseTime * 0.85))
+    maxTime := Max(minTime, Round(baseTime * 1.15))
+
+    Sleep(Random(minTime, maxTime))
 }
