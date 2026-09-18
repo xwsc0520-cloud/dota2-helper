@@ -16,6 +16,8 @@ w3 := "3"
 alt_d := "!d"
 alt_f := "!f"
 rd := {delay: 100}
+dfd := {delay: 125}
+h := "{CapsLock}"
 
 gesture.Add(d)
 gesture.Add(f)
@@ -36,6 +38,15 @@ gesture.Add("z")
 gesture.Add("x")
 gesture.Add("c")
 gesture.Add("v")
+
+gesture.Add("!q")
+gesture.Add("!w")
+gesture.Add("!e")
+gesture.Add("!r")
+
+gesture.Add("!z")
+gesture.Add("!x")
+gesture.Add("!c")
 
 OnSingle(key)
 {
@@ -72,10 +83,29 @@ OnSingle(key)
         case "x":
             AddCombo([w, e, e, r])
         case "c":
-            AddCombo([w, w, e, r])
+            AddCombo([w, w, e, r, rd, alt_d])
         case "v":
-            AddCombo([q, e, e, r])
+            AddCombo([q, e, e, r, rd, d, "a", h])
 
+        case "!q":
+
+        case "!w":
+
+        case "!z":
+            AddCombo([w1, f, dfd, d, dfd])
+            AddCombo([q, w, e, r])
+
+        case "!x":
+            AddCombo([w1, alt_f, dfd, d, dfd])
+            AddCombo([q, w, e, r])
+
+        case "!c":
+            AddCombo([w1, f, dfd])
+            AddCombo([w, e, e, r, rd])
+            AddCombo([alt_f, dfd, d, dfd])
+            AddCombo([w3, dfd])
+            AddCombo([alt_f, dfd, d, dfd])
+            AddCombo([q, w, e, r])
     }
 }
 
@@ -89,32 +119,31 @@ OnDouble(key)
             AddCombo([f, f])
 
         case "Tab":
-            AddCombo([q, w, w, r, rd, d, rd, f])
 
         case "q":
-            AddCombo([w, e, e, r, rd, f, rd, d])
+            AddCombo([f, dfd, d, dfd])
+            AddCombo([q, q, q, r, rd, d])
 
         case "w":
-            AddCombo([e, e, e, r, rd, f, rd, d])
+            AddCombo([f, dfd])
+            AddCombo([q, w, e, r, rd])
 
         case "e":
-            AddCombo([q, q, q, r, rd, f, rd, d])
 
         case "r":
-            AddCombo([w, e, e, r, rd, d, rd, f])
-
 
         case "z":
-            AddCombo([q, w, w, r, rd, d, rd, f])
+
 
         case "x":
-            AddCombo([q, w, e, r, rd, f, rd, d])
+            AddCombo([f, dfd, d, dfd])
+            AddCombo([w, e, e, r, rd, d])
 
         case "c":
-            AddCombo([q, e, e, r, rd, alt_f, rd, d])
+            AddCombo([w, w, e, r])
 
         case "v":
-            AddCombo([w, w, e, r, rd, f, rd, alt_d])
+
 
     }
 }
@@ -139,8 +168,7 @@ OnTriple(key)
 
 
         case "z":
-            AddCombo(["1", f, rd, d, rd])
-            AddCombo([q, w, e, r])
+
         case "x":
 
         case "c":
