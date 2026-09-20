@@ -39,10 +39,7 @@ $q::{
         AddCombo([q, q, q, r])
     }
 }
-$*w::{
-    if GetKeyState("LAlt", "P") {
-        return
-    }
+$w::{
     if GetKeyState("Space", "P") {
         KeyWait("Space")
         KeyWait("w")
