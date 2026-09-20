@@ -6,7 +6,6 @@ global queueRunning := false
 global queueCancel := false
 
 ~s::CancelComboQueue()
-~RButton::CancelComboQueue()
 
 CancelComboQueue()
 {

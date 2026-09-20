@@ -18,8 +18,8 @@ w3 := "3"
 
 alt_d := "!d"
 alt_f := "!f"
-delay_r := 75
-delay_df := 125
+delay_r := 80
+delay_df := 80
 
 $d::AddCombo([d])
 $f::AddCombo([f])
@@ -40,6 +40,9 @@ $q::{
     }
 }
 $*w::{
+    if GetKeyState("LAlt", "P") {
+        return
+    }
     if GetKeyState("Space", "P") {
         KeyWait("Space")
         KeyWait("w")
@@ -63,7 +66,6 @@ $z::AddCombo([e, e, e, r])
 $x::AddCombo([w, e, e, r])
 $c::AddCombo([w, w, e, r, delay_r, alt_d])
 $v::AddCombo([q, e, e, r, delay_r, d])
-
 
 ; 四段式连招
 $!w:: {
