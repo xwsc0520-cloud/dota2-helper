@@ -1,7 +1,10 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 
-#HotIf true
+SendMode("Input")
+SetWorkingDir(A_ScriptDir)
+
+#Include %A_ScriptDir%\queue.ahk
 
 ; 单独按下并松开 Space 时，正常输入空格
 Space::SendInput("{Space}")
@@ -10,5 +13,3 @@ Space::SendInput("{Space}")
 Space & q::SendInput("qqq")
 Space & w::SendInput("www")
 Space & e::SendInput("eee")
-
-#HotIf
