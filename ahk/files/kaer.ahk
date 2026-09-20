@@ -21,76 +21,48 @@ alt_f := "!f"
 delay_r := 75
 delay_df := 125
 
-$d:: {
-    AddCombo([d])
+$d::AddCombo([d])
+$f::AddCombo([f])
+$1::AddCombo([w1])
+$2::AddCombo([w2])
+$3::AddCombo([w3])
+
+$Tab::AddCombo([w, w, w, r])
+$LShift::AddCombo([q, q, w, r])
+
+$q::{
+    if GetKeyState("Space", "P") {
+        KeyWait("Space")
+        KeyWait("q")
+        AddCombo(["q", "q", "q"])
+    } else {
+        AddCombo([q, q, q, r])
+    }
+}
+$*w::{
+    if GetKeyState("Space", "P") {
+        KeyWait("Space")
+        KeyWait("w")
+        AddCombo(["w", "w", "w"])
+    } else {
+        AddCombo([q, w, w, r])
+    }
+}
+$e::{
+    if GetKeyState("Space", "P") {
+        KeyWait("Space")
+        KeyWait("e")
+        AddCombo(["e", "e", "e"])
+    } else {
+        AddCombo([q, q, e, r])
+    }
 }
 
-$f:: {
-    AddCombo([f])
-}
-$1:: {
-    AddCombo([w1])
-}
-$2:: {
-    AddCombo([w2])
-}
-$3:: {
-    AddCombo([w3])
-}
-
-$Tab:: {
-    AddCombo([w, w, w, r])
-}
-$LShift:: {
-    AddCombo([q, q, w, r])
-}
-
-$q:: {
-    AddCombo([q, q, q, r])
-}
-$w:: {
-    AddCombo([q, w, w, r])
-}
-$e:: {
-    AddCombo([q, q, e, r])
-}
-$r:: {
-    AddCombo([q, w, e, r])
-}
-$z:: {
-    AddCombo([e, e, e, r])
-}
-$x:: {
-    AddCombo([w, e, e, r])
-}
-$c:: {
-    AddCombo([w, w, e, r, delay_r, alt_d])
-}
-$v:: {
-    AddCombo([q, e, e, r, delay_r, d])
-}
-
-
-
-; 切球
-$Space::Send("{Space}")
-Space & q:: {
-    KeyWait("Space")
-    KeyWait("q")
-    AddCombo([q, q, q])
-}
-Space & w:: {
-    KeyWait("Space")
-    KeyWait("w")
-    AddCombo([w, w, w])
-}
-Space & e:: {
-    KeyWait("Space")
-    KeyWait("e")
-    AddCombo([e, e, e])
-}
-
-
+$r::AddCombo([q, w, e, r])
+$z::AddCombo([e, e, e, r])
+$x::AddCombo([w, e, e, r])
+$c::AddCombo([w, w, e, r, delay_r, alt_d])
+$v::AddCombo([q, e, e, r, delay_r, d])
 
 
 ; 四段式连招
