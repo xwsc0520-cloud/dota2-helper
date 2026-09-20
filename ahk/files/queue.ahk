@@ -88,6 +88,11 @@ ProcessComboQueue()
                     case "key":
                         key := action.value
 
+                        ; 发送前检查 Alt
+                        ; 如果 Alt 正在按下，则等待其释放
+                        if !WaitForAltRelease()
+                            break
+
                         Send("{Blind}{" key " down}")
                         RandomDelay(delay_down)
 
@@ -99,6 +104,7 @@ ProcessComboQueue()
 
                         Send("{Blind}{" key " up}")
                         RandomDelay(delay)
+
 
                     case "delay":
                         RandomDelay(action.value)
@@ -147,4 +153,24 @@ RandomDelay(baseTime)
     }
 }
 
+IsAltDown()
+{
+    return GetKeyState("Alt", "P")
+        || GetKeyState("LAlt", "P")
+        || GetKeyState("RAlt", "P")
+}
+
+WaitForAltRelease()
+{
+    global queueCancel
+
+    while IsAltDown() {
+        if queueCancel
+            return false
+
+        Sleep(10)
+    }
+
+    return !queueCancel
+}
 
