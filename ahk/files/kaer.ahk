@@ -76,14 +76,14 @@ $!z:: {
 
 
 ; 三段式连招
-$!q:: {
+$!a:: {
     AddCombo([d, delay_df, f, delay_df])
     AddCombo([w, w, w, r, delay_r])
     AddCombo([q, q, e, r, delay_r])
     AddCombo([d, delay_df, f, delay_df])
     AddCombo([w, e, e, r, delay_r])
 }
-$!c:: {
+$!s:: {
     AddCombo([d, delay_df, w1, delay_df])
     AddCombo([q, w, e, r, delay_r])
     AddCombo([e, e, e, r, delay_r])
