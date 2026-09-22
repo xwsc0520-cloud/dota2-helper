@@ -1,11 +1,10 @@
-global delay_down := 20
 global delay := 30
-
 global comboQueue := []
 global queueRunning := false
 global queueCancel := false
 
 ~s::CancelComboQueue()
+
 
 CancelComboQueue()
 {
@@ -13,9 +12,11 @@ CancelComboQueue()
 
     comboQueue := []
     queueCancel := true
+
     if !queueRunning
         queueCancel := false
 }
+
 
 AddCombo(combo)
 {
@@ -25,18 +26,26 @@ AddCombo(combo)
 
     for item in combo {
         if IsObject(item) {
+            ; 组合键对象：
+            ; {key: "v", mods: "!"}
             if item.HasOwnProp("key") {
+                key := item.key
+                mods := item.HasOwnProp("mods") ? item.mods : ""
+
                 actions.Push({
-                    type: "key",
-                    value: item.key
+                    type: "send",
+                    value: mods key
                 })
             }
+            ; 延迟对象：
+            ; {delay: 100}
             else if item.HasOwnProp("delay") {
                 actions.Push({
                     type: "delay",
                     value: item.delay
                 })
             }
+            ; 兼容 sleep 对象
             else if item.HasOwnProp("sleep") {
                 actions.Push({
                     type: "delay",
@@ -45,18 +54,19 @@ AddCombo(combo)
             }
         }
         else if Type(item) = "Integer" {
+            ; 数字直接表示延迟
             actions.Push({
                 type: "delay",
                 value: item
             })
         }
         else {
+            ; 普通单键
             actions.Push({
-                type: "key",
+                type: "send",
                 value: item
             })
         }
-
     }
 
     comboQueue.Push(actions)
@@ -69,42 +79,22 @@ AddCombo(combo)
 }
 
 
-
 ProcessComboQueue()
 {
     global comboQueue, queueRunning, queueCancel
-    global delay_down, delay
 
     try {
         while comboQueue.Length > 0 && !queueCancel {
             combo := comboQueue.RemoveAt(1)
 
             for action in combo {
-                ; Esc 后立即停止当前组合
                 if queueCancel
                     break
 
                 switch action.type {
-                    case "key":
-                        key := action.value
-
-                        ; 发送前检查 Alt
-                        ; 如果 Alt 正在按下，则等待其释放
-                        if !WaitForAltRelease()
-                            break
-
-                        Send("{Blind}{" key " down}")
-                        RandomDelay(delay_down)
-
-                        if queueCancel {
-                            ; 如果中途取消，确保按键被释放
-                            Send("{Blind}{" key " up}")
-                            break
-                        }
-
-                        Send("{Blind}{" key " up}")
+                    case "send":
+                        Send(action.value)
                         RandomDelay(delay)
-
 
                     case "delay":
                         RandomDelay(action.value)
@@ -116,7 +106,6 @@ ProcessComboQueue()
         queueRunning := false
 
         if queueCancel {
-            ; 清空剩余队列
             comboQueue := []
             queueCancel := false
         }
@@ -148,29 +137,6 @@ RandomDelay(baseTime)
         if remaining <= 0
             break
 
-        ; 分段等待，提高 Esc 响应速度
         Sleep(Min(5, remaining))
     }
 }
-
-IsAltDown()
-{
-    return GetKeyState("Alt", "P")
-        || GetKeyState("LAlt", "P")
-        || GetKeyState("RAlt", "P")
-}
-
-WaitForAltRelease()
-{
-    global queueCancel
-
-    while IsAltDown() {
-        if queueCancel
-            return false
-
-        Sleep(10)
-    }
-
-    return !queueCancel
-}
-
