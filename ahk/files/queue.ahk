@@ -3,8 +3,7 @@ global comboQueue := []
 global queueRunning := false
 global queueCancel := false
 
-~s::CancelComboQueue()
-
+~Esc::CancelComboQueue()
 
 CancelComboQueue()
 {
@@ -34,7 +33,7 @@ AddCombo(combo)
 
                 actions.Push({
                     type: "send",
-                    value: mods key
+                    value: "{Blind}" mods key
                 })
             }
             ; 延迟对象：
@@ -64,7 +63,7 @@ AddCombo(combo)
             ; 普通单键
             actions.Push({
                 type: "send",
-                value: item
+                value: "{Blind}" item
             })
         }
     }
