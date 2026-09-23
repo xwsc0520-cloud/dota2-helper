@@ -55,10 +55,10 @@ global SkillConfigs := [
             "d",
             100,
             "a",
-            "{CapsLock}",
             "e",
             "e",
-            "e"
+            "e",
+            "{CapsLock}"
         ]
     },
     {
@@ -68,6 +68,7 @@ global SkillConfigs := [
         cd: 15000,
         cast: [
             {key: "d", mods: "!"},
+            100,
             "a",
             "e",
             "e",
