@@ -166,7 +166,7 @@ global FSkill := ""
 global GUI_TRANSPARENCY := 128
 
 global CDCellWidth := 120
-global CDCellHeight := 65
+global CDCellHeight := 38
 
 ; 下方第二行有四格，所以窗口宽度按四格计算
 global CDTotalWidth := CDCellWidth * 4
@@ -205,7 +205,7 @@ global DSlotText := GuiCD.AddText(
     "x8 y8"
     . " w" Floor(CDTotalWidth / 2)
     . " h" SlotRowHeight
-    . " Left",
+    . " Center",
     "D槽：未同步"
 )
 
@@ -214,7 +214,7 @@ global FSlotText := GuiCD.AddText(
     . " y8"
     . " w" Floor(CDTotalWidth / 2)
     . " h" SlotRowHeight
-    . " Left",
+    . " Center",
     "F槽：未同步"
 )
 
@@ -228,8 +228,7 @@ global CDHotkeyText := Map()
 for rowIndex, rowItems in HotkeyLayout {
     rowWidth := rowItems.Length * CDCellWidth
 
-    ; 每一行按四格宽度居中
-    rowStartX := 8 + Floor((CDTotalWidth - rowWidth) / 2)
+    rowStartX := 8
 
     ; 第一行槽位状态结束后，开始绘制技能 CD
     rowY := 8 + SlotRowHeight + (rowIndex - 1) * CDCellHeight
@@ -237,25 +236,16 @@ for rowIndex, rowItems in HotkeyLayout {
     for colIndex, hkName in rowItems {
         cellX := rowStartX + (colIndex - 1) * CDCellWidth
 
-        GuiCD.SetFont("s10 Bold cFFFFFF", "Segoe UI")
-
-        GuiCD.AddText(
-            "x" cellX
-            . " y" rowY
-            . " w" CDCellWidth
-            . " h20 Center",
-            "[" StrUpper(hkName) "]"
-        )
-
         controlName := "CD_" hkName
 
         GuiCD.SetFont("s10 Norm cFFFFFF", "Segoe UI")
 
         GuiCD.AddText(
             "x" cellX
-            . " y" (rowY + 21)
+            . " y" rowY
             . " w" CDCellWidth
-            . " h40 Center v" controlName,
+            . " h" CDCellHeight
+            . " Center +0x200 v" controlName,
             SkillByHotkey[hkName] "`n检测中"
         )
 
@@ -352,8 +342,16 @@ SwitchThenCast(skill) {
     if skill = ""
         return
 
-    ; 不论技能当前在 D、F 还是不在槽位，
-    ; 都先实际发送一次切技能组合。
+    if DSkill = skill {
+        CastSkill(skill, "d")
+        return
+    }
+
+    if FSkill = skill {
+        CastSkill(skill, "f")
+        return
+    }
+
     SwitchSkill(skill)
 
     ; 切完后技能应处于 D 槽，因此按 D 释放。
@@ -654,7 +652,10 @@ UpdateCDGui() {
             "Segoe UI"
         )
     } else {
-        DSlotText.Text := "D槽：" DSkill
+        config := SkillByName[DSkill]
+        hotkey := StrUpper(config.hotkey)
+
+        DSlotText.Text := "D槽：" DSkill " " hotkey
 
         if GetSkillRemaining(DSkill) <= 0 {
             DSlotText.SetFont(
@@ -677,7 +678,10 @@ UpdateCDGui() {
             "Segoe UI"
         )
     } else {
-        FSlotText.Text := "F槽：" FSkill
+        config := SkillByName[FSkill]
+        hotkey := StrUpper(config.hotkey)
+
+        FSlotText.Text := "F槽：" FSkill " " hotkey
 
         if GetSkillRemaining(FSkill) <= 0 {
             FSlotText.SetFont(
@@ -705,17 +709,29 @@ UpdateCDGui() {
             skill := SkillByHotkey[hkName]
             remaining := GetSkillRemaining(skill)
 
-            if remaining <= 0 {
-                displayText := skill "`n可用"
+            isInSlot := (skill = DSkill || skill = FSkill)
 
-                CDHotkeyText[hkName].SetFont(
-                    "s10 Norm c00FF00",
-                    "Segoe UI"
-                )
+            if remaining <= 0 {
+                displayText := skill
+
+                if isInSlot {
+                    ; 可用，并且位于 D/F 槽：很粗的亮绿色
+                    CDHotkeyText[hkName].SetFont(
+                        "s11 Bold c00FF00",
+                        "Arial Black"
+                    )
+                } else {
+                    ; 可用，但不在 D/F 槽：普通白色
+                    CDHotkeyText[hkName].SetFont(
+                        "s10 Norm cFFFFFF",
+                        "Segoe UI"
+                    )
+                }
             } else {
                 seconds := Round(remaining / 1000, 1)
-                displayText := skill "`n" seconds " 秒"
+                displayText := skill " " seconds "秒"
 
+                ; CD 中：红色普通字体
                 CDHotkeyText[hkName].SetFont(
                     "s10 Norm cFF3030",
                     "Segoe UI"
