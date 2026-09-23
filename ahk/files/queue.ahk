@@ -3,7 +3,7 @@ global comboQueue := []
 global queueRunning := false
 global queueCancel := false
 
-~Esc::CancelComboQueue()
+;~Esc::CancelComboQueue()
 
 CancelComboQueue()
 {

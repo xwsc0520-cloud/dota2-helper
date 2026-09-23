@@ -17,13 +17,11 @@ global dl := 100
 ; ============================================================
 ; 技能配置
 ;
-; combo：
-;   只保存用于区分技能的 q/w/e 组合。
-;   r 不写入这里，因为所有技能切换都固定需要按 r。
+; combo 只保存用于区分技能的 q/w/e 组合，不包含 r。
+; 实际切换技能时会自动补上 r。
 ;
-; cast：
-;   保存释放技能时，切换完成后需要发送的内容。
-;   其中字符串 "d" 会根据实际槽位自动替换为 d/f。
+; cast 保存技能切换完成后的释放操作。
+; 字符串 "d" 会根据技能实际槽位替换成 d 或 f。
 ; ============================================================
 
 global SkillConfigs := [
@@ -34,7 +32,6 @@ global SkillConfigs := [
         cd: 27000,
         cast: ["d"]
     },
-
     {
         hotkey: "w",
         combo: "qwe",
@@ -42,7 +39,6 @@ global SkillConfigs := [
         cd: 36000,
         cast: ["d"]
     },
-
     {
         hotkey: "e",
         combo: "qqe",
@@ -50,7 +46,6 @@ global SkillConfigs := [
         cd: 23000,
         cast: ["d"]
     },
-
     {
         hotkey: "a",
         combo: "qee",
@@ -58,6 +53,7 @@ global SkillConfigs := [
         cd: 27000,
         cast: [
             "d",
+            100,
             "a",
             "{CapsLock}",
             "e",
@@ -65,7 +61,6 @@ global SkillConfigs := [
             "e"
         ]
     },
-
     {
         hotkey: "s",
         combo: "wwe",
@@ -79,7 +74,6 @@ global SkillConfigs := [
             "e"
         ]
     },
-
     {
         hotkey: "d",
         combo: "qqq",
@@ -87,7 +81,6 @@ global SkillConfigs := [
         cd: 19000,
         cast: ["d"]
     },
-
     {
         hotkey: "f",
         combo: "qqw",
@@ -95,7 +88,6 @@ global SkillConfigs := [
         cd: 40000,
         cast: ["d"]
     },
-
     {
         hotkey: "z",
         combo: "www",
@@ -103,7 +95,6 @@ global SkillConfigs := [
         cd: 27000,
         cast: ["d"]
     },
-
     {
         hotkey: "x",
         combo: "eee",
@@ -111,7 +102,6 @@ global SkillConfigs := [
         cd: 23000,
         cast: ["d"]
     },
-
     {
         hotkey: "c",
         combo: "wee",
@@ -123,31 +113,19 @@ global SkillConfigs := [
 
 
 ; ============================================================
-; 根据技能配置自动生成映射
+; 自动生成技能数据
 ; ============================================================
 
 global Skills := []
-
-; q/w/e 组合 -> 技能名称
-global SkillByCombo := Map()
-
-; 悬浮窗按键 -> 技能名称
 global SkillByHotkey := Map()
-
-; 技能名称 -> 技能配置
 global SkillByName := Map()
-
-; 技能名称 -> CD
 global SkillCD := Map()
-
-; 技能名称 -> 上次释放时间
 global SkillLastCast := Map()
 
 for config in SkillConfigs {
     skill := config.name
 
     Skills.Push(skill)
-    SkillByCombo[config.combo] := skill
     SkillByHotkey[config.hotkey] := skill
     SkillByName[skill] := config
     SkillCD[skill] := config.cd
@@ -156,11 +134,11 @@ for config in SkillConfigs {
 
 
 ; ============================================================
-; 悬浮窗快捷键布局
+; 技能 CD 布局
 ;
-; 第一行：Q W E
-; 第二行：A S D F
-; 第三行：Z X C
+; 第二行：Q W E
+; 第三行：A S D F
+; 第四行：Z X C
 ; ============================================================
 
 global HotkeyLayout := [
@@ -171,7 +149,7 @@ global HotkeyLayout := [
 
 
 ; ============================================================
-; 当前 D/F 技能槽
+; 当前 D/F 槽位
 ; ============================================================
 
 global DSkill := ""
@@ -179,7 +157,32 @@ global FSkill := ""
 
 
 ; ============================================================
-; 创建 CD 悬浮窗
+; UI 配置
+; ============================================================
+
+; 0~255：
+;   数值越小越透明
+;   255 为完全不透明
+global GUI_TRANSPARENCY := 128
+
+global CDCellWidth := 120
+global CDCellHeight := 65
+
+; 下方第二行有四格，所以窗口宽度按四格计算
+global CDTotalWidth := CDCellWidth * 4
+
+; 第一行 D/F 槽位信息的高度
+global SlotRowHeight := 38
+
+global CDWindowWidth := CDTotalWidth + 16
+global CDWindowHeight := (
+    SlotRowHeight
+    + CDCellHeight * 3
+    + 16
+)
+
+; ============================================================
+; 创建悬浮窗
 ; ============================================================
 
 global GuiCD := Gui(
@@ -191,20 +194,45 @@ GuiCD.BackColor := "202020"
 GuiCD.MarginX := 8
 GuiCD.MarginY := 8
 
+
+; ============================================================
+; 第一行：D/F 槽位
+; ============================================================
+
+GuiCD.SetFont("s13 Bold cFFFFFF", "Segoe UI")
+
+global DSlotText := GuiCD.AddText(
+    "x8 y8"
+    . " w" Floor(CDTotalWidth / 2)
+    . " h" SlotRowHeight
+    . " Left",
+    "D槽：未同步"
+)
+
+global FSlotText := GuiCD.AddText(
+    "x" (8 + Floor(CDTotalWidth / 2))
+    . " y8"
+    . " w" Floor(CDTotalWidth / 2)
+    . " h" SlotRowHeight
+    . " Left",
+    "F槽：未同步"
+)
+
+
+; ============================================================
+; 下方三行：技能 CD
+; ============================================================
+
 global CDHotkeyText := Map()
-
-global CDCellWidth := 120
-global CDCellHeight := 65
-
-; 第二行有四个格子，因此以四格宽度作为总宽度
-global CDTotalWidth := CDCellWidth * 4
 
 for rowIndex, rowItems in HotkeyLayout {
     rowWidth := rowItems.Length * CDCellWidth
 
-    ; 每一行居中
+    ; 每一行按四格宽度居中
     rowStartX := 8 + Floor((CDTotalWidth - rowWidth) / 2)
-    rowY := 8 + (rowIndex - 1) * CDCellHeight
+
+    ; 第一行槽位状态结束后，开始绘制技能 CD
+    rowY := 8 + SlotRowHeight + (rowIndex - 1) * CDCellHeight
 
     for colIndex, hkName in rowItems {
         cellX := rowStartX + (colIndex - 1) * CDCellWidth
@@ -235,12 +263,19 @@ for rowIndex, rowItems in HotkeyLayout {
     }
 }
 
+
+; ============================================================
+; 显示悬浮窗并设置整体透明度
+; ============================================================
+
 GuiCD.Show(
     "x20 y200"
-    . " w" (CDTotalWidth + 16)
-    . " h" (CDCellHeight * 3 + 16)
+    . " w" CDWindowWidth
+    . " h" CDWindowHeight
     . " NoActivate"
 )
+
+WinSetTransparent(GUI_TRANSPARENCY, "ahk_id " GuiCD.Hwnd)
 
 SetTimer(UpdateCDGui, 100)
 
@@ -249,50 +284,45 @@ SetTimer(UpdateCDGui, 100)
 ; 输入绑定
 ; ============================================================
 
-; ------------------------------------------------------------
-; Esc：重置所有本地状态
-;
-; ~Esc：
-;   保留 Esc 原本的功能，同时重置脚本状态。
-; ------------------------------------------------------------
+PgUp::ShowCDGui()
+PgDn::HideCDGui()
 
+; 保留 Esc 原功能，并重置本地槽位和 CD 状态
 ~Esc::ResetAllState()
 
-
-; ------------------------------------------------------------
-; 单独按 D/F：释放当前 D/F 槽位的技能
-; ------------------------------------------------------------
-
+; 单独按 D/F，释放对应槽位技能
 $d::CastCurrentSlot("d")
 $f::CastCurrentSlot("f")
 
-
-; ------------------------------------------------------------
-; LAlt 单键不执行任何脚本逻辑
-; ------------------------------------------------------------
-
+; 禁用LAlt
 LAlt::Return
 
+RegisterAllSkillHotkeys()
+
 
 ; ============================================================
-; 动态注册组合热键
-;
-; Space + 按键：
-;   只切技能。
-;
-; LAlt + 按键：
-;   先切技能，再释放技能。
+; 注册所有组合热键
 ; ============================================================
 
-for config in SkillConfigs {
+RegisterAllSkillHotkeys() {
+    global SkillConfigs
+
+    for config in SkillConfigs
+        RegisterOneSkillHotkey(config)
+}
+
+
+RegisterOneSkillHotkey(config) {
     skill := config.name
     hk := config.hotkey
 
+    ; Space + 技能键：只切技能
     Hotkey(
         "~Space & " hk,
         (*) => SwitchOnly(skill)
     )
 
+    ; LAlt + 技能键：切技能并释放
     Hotkey(
         "~LAlt & " hk,
         (*) => SwitchThenCast(skill)
@@ -301,105 +331,50 @@ for config in SkillConfigs {
 
 
 ; ============================================================
-; 只切技能
+; Space 组合：只切技能
 ; ============================================================
 
 SwitchOnly(skill) {
     if skill = ""
         return
 
-    SwitchSkillIfNeeded(skill)
+    SwitchSkill(skill)
 }
 
 
 ; ============================================================
-; 先切技能，再释放技能
+; LAlt 组合：切技能并释放
+;
+; 不使用 CD 阻止切换或释放。
 ; ============================================================
 
 SwitchThenCast(skill) {
-    global DSkill, FSkill
-
     if skill = ""
         return
 
-    if !IsSkillReady(skill)
-        return
-
-    ; 技能已经在 D 槽，直接释放
-    if DSkill = skill {
-        CastSkill(skill, "d")
-        return
-    }
-
-    ; 技能已经在 F 槽，直接释放
-    if FSkill = skill {
-        CastSkill(skill, "f")
-        return
-    }
-
-    ; 技能不在 D/F，切入 D 后释放
+    ; 不论技能当前在 D、F 还是不在槽位，
+    ; 都先实际发送一次切技能组合。
     SwitchSkill(skill)
+
+    ; 切完后技能应处于 D 槽，因此按 D 释放。
     CastSkill(skill, "d")
 }
 
 
 ; ============================================================
-; 判断技能当前所在槽位
+; 切换技能
 ;
-; 返回：
-;   "d"：技能在 D 槽
-;   "f"：技能在 F 槽
-;   "" ：技能不在任何槽位
-; ============================================================
-
-GetSkillSlot(skill) {
-    global DSkill, FSkill
-
-    if DSkill = skill
-        return "d"
-
-    if FSkill = skill
-        return "f"
-
-    return ""
-}
-
-
-; ============================================================
-; 只切技能时的判断
-; ============================================================
-
-SwitchSkillIfNeeded(skill) {
-    global DSkill, FSkill
-
-    ; 已经在 D，不需要操作
-    if DSkill = skill
-        return
-
-    ; 已经在 F，切回 D
-    if FSkill = skill {
-        SwitchFToD()
-        return
-    }
-
-    SwitchSkill(skill)
-}
-
-
-; ============================================================
-; 切入技能
+; 规则：
 ;
-; 逻辑：
-;   新技能进入 D；
-;   原 D 技能进入 F；
-;   原 F 技能消失。
+; 1. 如果技能已经在 D，仍然重新发送切换按键，
+;    但不修改脚本中的 D/F 槽位状态。
 ;
-; 实际发送的切换组合为：
-;   combo + r
+; 2. 如果技能在 F，发送切换按键并交换 D/F。
 ;
-; 注意：
-;   combo 配置中没有 r；
-;   这里仍然会实际发送 r。
+; 3. 如果技能不在 D/F，新技能进入 D，
+;    原 D 进入 F，原 F 被顶掉。
+;
+; 4. CD 不会阻止切技能。
 ; ============================================================
 
 SwitchSkill(skill) {
@@ -408,32 +383,42 @@ SwitchSkill(skill) {
     if skill = ""
         return
 
-    if DSkill = skill
-        return
-
-    if FSkill = skill {
-        SwitchFToD()
+    ; 已经在 D：仍然实际发送切换组合
+    if DSkill = skill {
+        SendSwitchCommand(skill)
         return
     }
 
-    ; 如果 D 正在 CD、F 已经可用，
-    ; 先把 F 切到 D，避免后续切新技能时顶掉可用技能。
+    ; 已经在 F：切到 D，并交换槽位
+    if FSkill = skill {
+        SendSwitchCommand(skill)
+
+        oldD := DSkill
+        DSkill := skill
+        FSkill := oldD
+
+        return
+    }
+
+    ; 如果 D 正在 CD，而 F 已经可用：
+    ; 先把 F 切到 D，尽量避免后续把可用技能顶掉。
+    ;
+    ; CD 只影响槽位整理，不会阻止技能切换。
     if DSkill != "" && FSkill != "" {
         if !IsSkillReady(DSkill) && IsSkillReady(FSkill)
             SwitchFToD()
     }
 
-    ; 实际发送 combo + r
+    ; 新技能切入
     SendSwitchCommand(skill)
 
-    ; 更新本地槽位状态
     FSkill := DSkill
     DSkill := skill
 }
 
 
 ; ============================================================
-; 将 F 技能切到 D
+; 将 F 槽技能切到 D
 ; ============================================================
 
 SwitchFToD() {
@@ -445,10 +430,8 @@ SwitchFToD() {
     skill := FSkill
     oldD := DSkill
 
-    ; 实际发送 combo + r
     SendSwitchCommand(skill)
 
-    ; 交换槽位状态
     DSkill := skill
     FSkill := oldD
 }
@@ -457,15 +440,8 @@ SwitchFToD() {
 ; ============================================================
 ; 发送切技能组合
 ;
-; combo 配置中只保存 q/w/e 部分。
-; 这里实际发送：
-;
-;   q/w/e 组合 + r
-;
-; 例如：
-;
-;   qww -> q w w r
-;   qwe -> q w e r
+; 配置中的 combo 不含 r。
+; 实际发送时自动追加 r。
 ; ============================================================
 
 SendSwitchCommand(skill) {
@@ -480,11 +456,10 @@ SendSwitchCommand(skill) {
     config := SkillByName[skill]
     combo := []
 
-    ; 添加 q/w/e 组合
     Loop Parse, config.combo
         combo.Push(A_LoopField)
 
-    ; r 仍然是实际需要发送的切技能按键
+    ; 实际切技能必须按 r
     combo.Push("r")
 
     AddCombo(combo)
@@ -492,13 +467,13 @@ SendSwitchCommand(skill) {
 
 
 ; ============================================================
-; 单独按 D/F：释放当前槽位技能
+; 单独按 D/F 释放当前槽位技能
+;
+; 即使技能处于 CD，也允许发送释放键。
 ; ============================================================
 
 CastCurrentSlot(position) {
     global DSkill, FSkill
-
-    skill := ""
 
     if position = "d"
         skill := DSkill
@@ -510,12 +485,7 @@ CastCurrentSlot(position) {
     if skill = ""
         return
 
-    if !IsSkillReady(skill)
-        return
-
-    ; 只发送当前槽位按键
     AddCombo([position])
-
     MarkSkillCast(skill)
 }
 
@@ -523,8 +493,7 @@ CastCurrentSlot(position) {
 ; ============================================================
 ; 执行技能释放
 ;
-; 这里不再包含切技能组合。
-; 调用方负责保证技能已经处于正确槽位。
+; 不使用 CD 阻止释放。
 ; ============================================================
 
 CastSkill(skill, position := "d") {
@@ -537,14 +506,8 @@ CastSkill(skill, position := "d") {
     if !SkillByName.Has(skill)
         return
 
-    if !IsSkillReady(skill)
-        return
-
     config := SkillByName[skill]
-    combo := []
-
-    ; 技能释放前的延迟
-    combo.Push(dl)
+    combo := [dl]
 
     for item in config.cast {
         ; 普通字符串 d 根据实际槽位替换为 d/f
@@ -563,21 +526,16 @@ CastSkill(skill, position := "d") {
             continue
         }
 
-        ; 其他项目原样加入
         combo.Push(item)
     }
 
-    if combo.Length = 0
-        return
-
     AddCombo(combo)
-
     MarkSkillCast(skill)
 }
 
 
 ; ============================================================
-; 判断一个队列项是否为 Alt+D 对象
+; 判断队列项是否为 Alt+D
 ; ============================================================
 
 IsAltDObject(item) {
@@ -605,6 +563,9 @@ MarkSkillCast(skill) {
 
 ; ============================================================
 ; 判断技能是否冷却完成
+;
+; 只用于 UI 显示和槽位整理，
+; 不用于阻止切技能或释放技能。
 ; ============================================================
 
 IsSkillReady(skill) {
@@ -619,9 +580,7 @@ IsSkillReady(skill) {
     if !SkillLastCast.Has(skill)
         return true
 
-    elapsed := A_TickCount - SkillLastCast[skill]
-
-    return elapsed >= SkillCD[skill]
+    return A_TickCount - SkillLastCast[skill] >= SkillCD[skill]
 }
 
 
@@ -641,24 +600,16 @@ GetSkillRemaining(skill) {
     if !SkillLastCast.Has(skill)
         return 0
 
-    remaining := SkillCD[skill] - (A_TickCount - SkillLastCast[skill])
+    remaining := SkillCD[skill] - (
+        A_TickCount - SkillLastCast[skill]
+    )
 
-    if remaining < 0
-        return 0
-
-    return remaining
+    return Max(remaining, 0)
 }
 
 
 ; ============================================================
-; 重置所有本地状态
-;
-; Esc 后：
-;   - 清空 D/F 技能槽状态；
-;   - 所有技能 CD 清零。
-;
-; 注意：
-;   这只重置脚本记录的状态，不会改变游戏中的真实技能状态。
+; Esc：重置所有本地状态
 ; ============================================================
 
 ResetAllState() {
@@ -674,7 +625,7 @@ ResetAllState() {
 
 
 ; ============================================================
-; 更新 CD 悬浮窗
+; 更新悬浮窗
 ; ============================================================
 
 UpdateCDGui() {
@@ -683,6 +634,68 @@ UpdateCDGui() {
     global CDHotkeyText
     global DSkill
     global FSkill
+    global DSlotText
+    global FSlotText
+
+    ; --------------------------------------------------------
+    ; 第一行：D/F 槽位状态
+    ;
+    ; 槽位技能颜色与对应技能的 CD 颜色一致：
+    ;   可用：绿色
+    ;   CD中：红色
+    ;   未同步：灰色
+    ; --------------------------------------------------------
+
+    if DSkill = "" {
+        DSlotText.Text := "D槽：未同步"
+
+        DSlotText.SetFont(
+            "s13 Bold cAAAAAA",
+            "Segoe UI"
+        )
+    } else {
+        DSlotText.Text := "D槽：" DSkill
+
+        if GetSkillRemaining(DSkill) <= 0 {
+            DSlotText.SetFont(
+                "s13 Bold c00FF00",
+                "Segoe UI"
+            )
+        } else {
+            DSlotText.SetFont(
+                "s13 Bold cFF3030",
+                "Segoe UI"
+            )
+        }
+    }
+
+    if FSkill = "" {
+        FSlotText.Text := "F槽：未同步"
+
+        FSlotText.SetFont(
+            "s13 Bold cAAAAAA",
+            "Segoe UI"
+        )
+    } else {
+        FSlotText.Text := "F槽：" FSkill
+
+        if GetSkillRemaining(FSkill) <= 0 {
+            FSlotText.SetFont(
+                "s13 Bold c00FF00",
+                "Segoe UI"
+            )
+        } else {
+            FSlotText.SetFont(
+                "s13 Bold cFF3030",
+                "Segoe UI"
+            )
+        }
+    }
+
+
+    ; --------------------------------------------------------
+    ; 下方三行：技能 CD 状态
+    ; --------------------------------------------------------
 
     for rowItems in HotkeyLayout {
         for hkName in rowItems {
@@ -709,12 +722,28 @@ UpdateCDGui() {
                 )
             }
 
-            if DSkill = skill
-                displayText .= " [D]"
-            else if FSkill = skill
-                displayText .= " [F]"
-
             CDHotkeyText[hkName].Text := displayText
         }
     }
+}
+
+; ============================================================
+; 显示 CD UI
+; ============================================================
+
+ShowCDGui() {
+    global GuiCD
+
+    GuiCD.Show("NoActivate")
+}
+
+
+; ============================================================
+; 隐藏 CD UI
+; ============================================================
+
+HideCDGui() {
+    global GuiCD
+
+    GuiCD.Hide()
 }
