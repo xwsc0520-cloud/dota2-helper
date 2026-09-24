@@ -40,14 +40,14 @@ global SkillConfigs := [
         cast: ["d"]
     },
     {
-        hotkey: "e",
+        hotkey: "s",
         combo: "qqe",
         name: "冰墙",
         cd: 23000,
         cast: ["d"]
     },
     {
-        hotkey: "a",
+        hotkey: "d",
         combo: "qee",
         name: "火人",
         cd: 27000,
@@ -62,7 +62,7 @@ global SkillConfigs := [
         ]
     },
     {
-        hotkey: "s",
+        hotkey: "e",
         combo: "wwe",
         name: "灵动",
         cd: 15000,
@@ -76,7 +76,7 @@ global SkillConfigs := [
         ]
     },
     {
-        hotkey: "d",
+        hotkey: "a",
         combo: "qqq",
         name: "极冷",
         cd: 19000,
@@ -90,7 +90,7 @@ global SkillConfigs := [
         cast: ["d"]
     },
     {
-        hotkey: "z",
+        hotkey: "c",
         combo: "www",
         name: "雷爆",
         cd: 27000,
@@ -104,7 +104,7 @@ global SkillConfigs := [
         cast: ["d"]
     },
     {
-        hotkey: "c",
+        hotkey: "z",
         combo: "wee",
         name: "陨石",
         cd: 50000,
@@ -164,7 +164,7 @@ global FSkill := ""
 ; 0~255：
 ;   数值越小越透明
 ;   255 为完全不透明
-global GUI_TRANSPARENCY := 128
+global GUI_TRANSPARENCY := 196
 
 global CDCellWidth := 120
 global CDCellHeight := 38
@@ -187,7 +187,7 @@ global CDWindowHeight := (
 ; ============================================================
 
 global GuiCD := Gui(
-    "+AlwaysOnTop -Caption +ToolWindow",
+    "+AlwaysOnTop -Caption +ToolWindow +E0x80000 +E0x20",
     "技能CD"
 )
 
@@ -286,7 +286,7 @@ $d::CastCurrentSlot("d")
 $f::CastCurrentSlot("f")
 
 ; 禁用LAlt
-LAlt::Return
+$LAlt::Return
 
 RegisterAllSkillHotkeys()
 
@@ -307,16 +307,14 @@ RegisterOneSkillHotkey(config) {
     skill := config.name
     hk := config.hotkey
 
-    ; Space + 技能键：只切技能
     Hotkey(
-        "~Space & " hk,
-        (*) => SwitchOnly(skill)
+        "Space & " hk,
+        (*) => SwitchThenCast(skill)
     )
 
-    ; LAlt + 技能键：切技能并释放
     Hotkey(
-        "~LAlt & " hk,
-        (*) => SwitchThenCast(skill)
+        "LAlt & " hk,
+        (*) => SwitchOnly(skill)
     )
 }
 
