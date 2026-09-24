@@ -13,6 +13,56 @@ SetWorkingDir(A_ScriptDir)
 
 global dl := 100
 
+; ============================================================
+; 英雄等级与 R 技能 CD 配置
+; ============================================================
+
+global HeroLevel := 1
+global MinHeroLevel := 1
+global MaxHeroLevel := 30
+
+; R 技能 1~30 级 CD，单位：毫秒
+;
+; 下面的数值请按照实际游戏中的 R 技能 CD 修改。
+; 第 1 个元素对应 1 级，第 30 个元素对应 30 级。
+;
+global RLevelCDList := [
+    7000,   ; 1级
+    6700,   ; 2级
+    6400,   ; 3级
+    6100,   ; 4级
+    5800,   ; 5级
+    5200,   ; 6级
+    4900,   ; 7级
+    4600,   ; 8级
+    4300,   ; 9级
+    4000,   ; 10级
+    3700,   ; 11级
+    3100,   ; 12级
+    2800,   ; 13级
+    2500,   ; 14级
+    2200,   ; 15级
+    1900,   ; 16级
+    1600,   ; 17级
+    1000,   ; 18级
+    700,    ; 19级
+    400,    ; 20级
+    100,    ; 21级
+    0,      ; 22级
+    0,      ; 23级
+    0,      ; 24级
+    0,      ; 25级
+    0,      ; 26级
+    0,      ; 27级
+    0,      ; 28级
+    0,      ; 29级
+    0,      ; 30级
+]
+
+; 最近一次发送 R 切技能按键的时间
+global RLastCast := 0
+
+
 
 ; ============================================================
 ; 技能配置
@@ -21,7 +71,7 @@ global dl := 100
 ; 实际切换技能时会自动补上 r。
 ;
 ; cast 保存技能切换完成后的释放操作。
-; 字符串 "d" 会根据技能实际槽位替换成 d 或 f。
+; 字符串 "df" 会根据技能实际槽位替换成 d 或 f。
 ; ============================================================
 
 global SkillConfigs := [
@@ -30,21 +80,21 @@ global SkillConfigs := [
         combo: "qww",
         name: "吹风",
         cd: 27000,
-        cast: ["d"]
+        cast: ["df"]
     },
     {
         hotkey: "w",
         combo: "qwe",
         name: "推波",
         cd: 36000,
-        cast: ["d"]
+        cast: ["df"]
     },
     {
         hotkey: "s",
         combo: "qqe",
         name: "冰墙",
         cd: 23000,
-        cast: ["d"]
+        cast: ["df"]
     },
     {
         hotkey: "d",
@@ -52,7 +102,7 @@ global SkillConfigs := [
         name: "火人",
         cd: 27000,
         cast: [
-            "d",
+            "df",
             100,
             "a",
             "e",
@@ -67,7 +117,7 @@ global SkillConfigs := [
         name: "灵动",
         cd: 15000,
         cast: [
-            {key: "d", mods: "!"},
+            {key: "df", mods: "!"},
             100,
             "a",
             "e",
@@ -80,35 +130,35 @@ global SkillConfigs := [
         combo: "qqq",
         name: "极冷",
         cd: 19000,
-        cast: ["d"]
+        cast: ["df"]
     },
     {
         hotkey: "f",
         combo: "qqw",
         name: "隐身",
         cd: 40000,
-        cast: ["d"]
+        cast: ["df"]
     },
     {
         hotkey: "c",
         combo: "www",
         name: "雷爆",
         cd: 27000,
-        cast: ["d"]
+        cast: ["df"]
     },
     {
         hotkey: "x",
         combo: "eee",
         name: "天火",
         cd: 23000,
-        cast: ["d"]
+        cast: ["df"]
     },
     {
         hotkey: "z",
         combo: "wee",
         name: "陨石",
         cd: 50000,
-        cast: ["d"]
+        cast: ["df"]
     }
 ]
 
@@ -173,7 +223,7 @@ global CDCellHeight := 38
 global CDTotalWidth := CDCellWidth * 4
 
 ; 第一行 D/F 槽位信息的高度
-global SlotRowHeight := 38
+global SlotRowHeight := 62
 
 global CDWindowWidth := CDTotalWidth + 16
 global CDWindowHeight := (
@@ -218,6 +268,24 @@ global FSlotText := GuiCD.AddText(
     . " Center",
     "F槽：未同步"
 )
+
+global HeroLevelText := GuiCD.AddText(
+    "x8 y42"
+    . " w" Floor(CDTotalWidth / 2)
+    . " h20"
+    . " Center",
+    "等级：1"
+)
+
+global RCDText := GuiCD.AddText(
+    "x" (8 + Floor(CDTotalWidth / 2))
+    . " y42"
+    . " w" Floor(CDTotalWidth / 2)
+    . " h20"
+    . " Center",
+    "R：就绪"
+)
+
 
 
 ; ============================================================
@@ -277,6 +345,11 @@ SetTimer(UpdateCDGui, 100)
 
 PgUp::ShowCDGui()
 PgDn::HideCDGui()
+
+; 上下方向键调整英雄等级
+Up::ChangeHeroLevel(1)
+Down::ChangeHeroLevel(-1)
+
 
 ; 保留 Esc 原功能，并重置本地槽位和 CD 状态
 ~Esc::ResetAllState()
@@ -341,6 +414,8 @@ SwitchThenCast(skill) {
     if skill = ""
         return
 
+    ; 技能已经在 D 槽，直接释放
+    ; 不发送 R，不触发 R CD
     if DSkill = skill {
         CastSkill(skill, "d")
         return
@@ -351,11 +426,14 @@ SwitchThenCast(skill) {
         return
     }
 
-    SwitchSkill(skill)
+    ; 技能不在 D/F，先切入 D
+    if !SwitchSkill(skill)
+        return
 
-    ; 切完后技能应处于 D 槽，因此按 D 释放。
     CastSkill(skill, "d")
 }
+
+
 
 
 ; ============================================================
@@ -378,40 +456,48 @@ SwitchSkill(skill) {
     global DSkill, FSkill
 
     if skill = ""
-        return
+        return false
 
-    ; 已经在 D：仍然实际发送切换组合
-    if DSkill = skill {
-        SendSwitchCommand(skill)
-        return
-    }
+    ; 技能已经在 D 槽，不需要再次切换
+    ; 不发送 R，也不会触发 R CD
+    if DSkill = skill
+        return true
 
-    ; 已经在 F：切到 D，并交换槽位
+    ; R CD 未完成，禁止切换
+    if !IsRReady()
+        return false
+
+    ; 技能已经在 F 槽：切到 D，并交换槽位
     if FSkill = skill {
-        SendSwitchCommand(skill)
+        if !SendSwitchCommand(skill, true)
+            return false
 
         oldD := DSkill
         DSkill := skill
         FSkill := oldD
 
-        return
+        return true
     }
 
     ; 如果 D 正在 CD，而 F 已经可用：
-    ; 先把 F 切到 D，尽量避免后续把可用技能顶掉。
-    ;
-    ; CD 只影响槽位整理，不会阻止技能切换。
+    ; 先把 F 切到 D
     if DSkill != "" && FSkill != "" {
-        if !IsSkillReady(DSkill) && IsSkillReady(FSkill)
+        if !IsSkillReady(DSkill) && IsSkillReady(FSkill) {
             SwitchFToD()
+        }
     }
 
-    ; 新技能切入
-    SendSwitchCommand(skill)
+    ; 新技能切入 D 槽
+    if !SendSwitchCommand(skill, false)
+        return false
 
     FSkill := DSkill
     DSkill := skill
+
+    return true
 }
+
+
 
 
 ; ============================================================
@@ -424,14 +510,21 @@ SwitchFToD() {
     if FSkill = ""
         return
 
+    ; R CD 未好，禁止切换
+    if !IsRReady()
+        return
+
     skill := FSkill
     oldD := DSkill
 
-    SendSwitchCommand(skill)
+    if !SendSwitchCommand(skill, true)
+        return
 
     DSkill := skill
     FSkill := oldD
 }
+
+
 
 
 ; ============================================================
@@ -441,14 +534,18 @@ SwitchFToD() {
 ; 实际发送时自动追加 r。
 ; ============================================================
 
-SendSwitchCommand(skill) {
+SendSwitchCommand(skill, f_to_d) {
     global SkillByName
+    global RLastCast
 
     if skill = ""
-        return
+        return false
 
     if !SkillByName.Has(skill)
-        return
+        return false
+
+    if !IsRReady()
+        return false
 
     config := SkillByName[skill]
     combo := []
@@ -456,11 +553,18 @@ SendSwitchCommand(skill) {
     Loop Parse, config.combo
         combo.Push(A_LoopField)
 
-    ; 实际切技能必须按 r
     combo.Push("r")
 
     AddCombo(combo)
+
+    if !f_to_d {
+        RLastCast := A_TickCount
+    }
+
+    return true
 }
+
+
 
 
 ; ============================================================
@@ -482,6 +586,10 @@ CastCurrentSlot(position) {
     if skill = ""
         return
 
+    if !IsSkillReady(skill) {
+        return
+    }
+
     AddCombo([position])
     MarkSkillCast(skill)
 }
@@ -493,7 +601,7 @@ CastCurrentSlot(position) {
 ; 不使用 CD 阻止释放。
 ; ============================================================
 
-CastSkill(skill, position := "d") {
+CastSkill(skill, position) {
     global SkillByName
     global dl
 
@@ -503,12 +611,16 @@ CastSkill(skill, position := "d") {
     if !SkillByName.Has(skill)
         return
 
+    if !IsSkillReady(skill) {
+        return
+    }
+
     config := SkillByName[skill]
     combo := [dl]
 
     for item in config.cast {
         ; 普通字符串 d 根据实际槽位替换为 d/f
-        if Type(item) = "String" && item = "d" {
+        if Type(item) = "String" && item = "df" {
             combo.Push(position)
             continue
         }
@@ -540,7 +652,7 @@ IsAltDObject(item) {
         return false
 
     try {
-        return item.key = "d" && item.mods = "!"
+        return item.key = "df" && item.mods = "!"
     } catch {
         return false
     }
@@ -612,13 +724,16 @@ GetSkillRemaining(skill) {
 ResetAllState() {
     global DSkill, FSkill
     global SkillLastCast, Skills
+    global RLastCast
 
     DSkill := ""
     FSkill := ""
+    RLastCast := 0
 
     for skill in Skills
         SkillLastCast[skill] := 0
 }
+
 
 
 ; ============================================================
@@ -633,6 +748,10 @@ UpdateCDGui() {
     global FSkill
     global DSlotText
     global FSlotText
+    global HeroLevel
+    global HeroLevelText
+    global RCDText
+
 
     ; --------------------------------------------------------
     ; 第一行：D/F 槽位状态
@@ -716,15 +835,23 @@ UpdateCDGui() {
                 if isInSlot {
                     ; 可用，并且位于 D/F 槽：很粗的亮绿色
                     CDHotkeyText[hkName].SetFont(
-                        "s11 Bold c00FF00",
+                        "s11 Bold c30FF30",
                         "Arial Black"
                     )
                 } else {
-                    ; 可用，但不在 D/F 槽：普通白色
-                    CDHotkeyText[hkName].SetFont(
-                        "s10 Norm cFFFFFF",
-                        "Segoe UI"
-                    )
+                    if IsRReady() {
+                        ; 可用，但不在 D/F 槽，有大：蓝色
+                        CDHotkeyText[hkName].SetFont(
+                            "s10 Norm c8080FF",
+                            "Segoe UI"
+                        )
+                    } else {
+                        ; 可用，但不在 D/F 槽，没大：普通白色
+                        CDHotkeyText[hkName].SetFont(
+                            "s10 Norm cFFFFFF",
+                            "Segoe UI"
+                        )
+                    }
                 }
             } else {
                 seconds := Round(remaining / 1000, 1)
@@ -740,6 +867,31 @@ UpdateCDGui() {
             CDHotkeyText[hkName].Text := displayText
         }
     }
+
+    ; --------------------------------------------------------
+    ; 英雄等级与 R CD
+    ; --------------------------------------------------------
+
+    rRemaining := GetRRemaining()
+
+    HeroLevelText.Text := "等级：" HeroLevel
+
+    if rRemaining <= 0 {
+        RCDText.Text := "R：就绪"
+
+        RCDText.SetFont(
+            "s10 Bold c00FF00",
+            "Segoe UI"
+        )
+    } else {
+        RCDText.Text := "R：" Round(rRemaining / 1000, 1) "秒"
+
+        RCDText.SetFont(
+            "s10 Bold cFF3030",
+            "Segoe UI"
+        )
+    }
+
 }
 
 ; ============================================================
@@ -761,4 +913,83 @@ HideCDGui() {
     global GuiCD
 
     GuiCD.Hide()
+}
+
+
+; ============================================================
+; 调整英雄等级
+; ============================================================
+
+ChangeHeroLevel(amount) {
+    global HeroLevel
+    global MinHeroLevel
+    global MaxHeroLevel
+    global RLevelCDList
+
+    newLevel := HeroLevel + amount
+
+    if newLevel < MinHeroLevel
+        newLevel := MinHeroLevel
+
+    if newLevel > MaxHeroLevel
+        newLevel := MaxHeroLevel
+
+    HeroLevel := newLevel
+
+    ; 防止等级超过实际 CD 配置数组长度
+    if HeroLevel > RLevelCDList.Length
+        HeroLevel := RLevelCDList.Length
+}
+
+; ============================================================
+; 获取当前等级的 R CD
+; ============================================================
+
+GetCurrentRCD() {
+    global HeroLevel
+    global RLevelCDList
+
+    if RLevelCDList.Length = 0
+        return 0
+
+    level := HeroLevel
+
+    if level < 1
+        level := 1
+
+    if level > RLevelCDList.Length
+        level := RLevelCDList.Length
+
+    return RLevelCDList[level]
+}
+
+; ============================================================
+; 判断 R 是否可以使用
+; ============================================================
+
+IsRReady() {
+    global RLastCast
+
+    if RLastCast = 0
+        return true
+
+    return A_TickCount - RLastCast >= GetCurrentRCD()
+}
+
+
+; ============================================================
+; 获取 R 剩余 CD
+; ============================================================
+
+GetRRemaining() {
+    global RLastCast
+
+    if RLastCast = 0
+        return 0
+
+    remaining := GetCurrentRCD() - (
+        A_TickCount - RLastCast
+    )
+
+    return Max(remaining, 0)
 }
