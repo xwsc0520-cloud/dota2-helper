@@ -101,36 +101,21 @@ global SkillConfigs := [
         combo: "qee",
         name: "火人",
         cd: 27000,
-        cast: [
-            "df",
-            100,
-            "a",
-            "e",
-            "e",
-            "e",
-            "{CapsLock}"
-        ]
+        cast: ["df", dl, "a", "e", "e", "e", "{CapsLock}"]
     },
     {
         hotkey: "e",
         combo: "wwe",
         name: "灵动",
         cd: 15000,
-        cast: [
-            {key: "df", mods: "!"},
-            100,
-            "a",
-            "e",
-            "e",
-            "e"
-        ]
+        cast: [{key: "df", mods: "!"}, dl, "a", "e", "e", "e"]
     },
     {
         hotkey: "a",
         combo: "qqq",
         name: "极冷",
         cd: 19000,
-        cast: ["df"]
+        cast: ["df", "x"]
     },
     {
         hotkey: "f",
