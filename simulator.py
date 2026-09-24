@@ -592,7 +592,7 @@ class SimulatorState:
                 # "name": "npc_dota_hero_hoodwink",
                 "name": "npc_dota_hero_invoker",
                 "level": max(
-                    1,
+                    5,
                     min(
                         30,
                         1 + max(0, game_time) // 60,
