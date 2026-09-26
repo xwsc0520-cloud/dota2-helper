@@ -6,6 +6,8 @@ global RCDText := ""
 global CDHotkeyText := Map()
 global GSIClockText
 
+global UiRReady := false
+
 CreateCDGui() {
     global GuiCD
     global DSlotText
@@ -128,6 +130,7 @@ UpdateCDGui() {
     global HeroLevel
     global HeroLevelText
     global RCDText
+    global UiRReady
 
     UpdateSlotText(DSlotText, "D", DSkill)
     UpdateSlotText(FSlotText, "F", FSkill)
@@ -182,6 +185,10 @@ UpdateCDGui() {
             "s8 Bold c00FF00",
             "Segoe UI"
         )
+        if !UiRReady {
+            SoundSkillReadyAsync()
+            UiRReady := true
+        }
     } else {
         RCDText.Text :=
             "R：" Round(rRemaining / 1000, 1) "秒"
@@ -190,6 +197,7 @@ UpdateCDGui() {
             "s8 Bold cFF3030",
             "Segoe UI"
         )
+        UiRReady := false
     }
 }
 
@@ -237,4 +245,16 @@ ShowCDGui() {
 HideCDGui() {
     global GuiCD
     GuiCD.Hide()
+}
+
+SoundSkillReadyAsync()
+{
+    SetTimer(() => SoundSkillReady(), -1)
+}
+
+SoundSkillReady()
+{
+    SoundBeep(660, 80)
+    Sleep(35)
+    SoundBeep(990, 120)
 }

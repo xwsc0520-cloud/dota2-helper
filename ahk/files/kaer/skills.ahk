@@ -26,7 +26,7 @@ SwitchSkill(skill) {
     global SkillByName, RLastCast
 
     if !IsRReady() {
-        SoundBeep(1000, 100)
+        SoundSkillUnavailableAsync()
         return false
     }
 
@@ -57,7 +57,7 @@ CastCurrentSlot(position) {
     else if position = "f"
         skill := FSkill
     else {
-        SoundBeep(1000, 100)
+        SoundSkillUnavailableAsync()
         return
     }
 
@@ -81,3 +81,18 @@ CastSkill(skill, position) {
     AddCombo(combo)
     MarkSkillCast(skill)
 }
+
+SoundSkillUnavailableAsync()
+{
+    SetTimer(() => SoundSkillUnavailable(), -1)
+}
+
+SoundSkillUnavailable()
+{
+    SoundBeep(220, 100)
+    Sleep(35)
+    SoundBeep(180, 120)
+}
+
+
+
