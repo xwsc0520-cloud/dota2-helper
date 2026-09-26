@@ -1,6 +1,4 @@
 global GuiCD := ""
-global DSlotText := ""
-global FSlotText := ""
 global HeroLevelText := ""
 global RCDText := ""
 global CDHotkeyText := Map()
@@ -10,8 +8,6 @@ global UiRReady := false
 
 CreateCDGui() {
     global GuiCD
-    global DSlotText
-    global FSlotText
     global HeroLevelText
     global RCDText
     global CDHotkeyText
@@ -43,20 +39,7 @@ CreateCDGui() {
 
     halfWidth := Floor(CDTotalWidth / 2)
 
-    DSlotText := GuiCD.AddText(
-        "x4 y4 w" halfWidth " h" SlotRowHeight " Center +0x200",
-        "D槽：未同步"
-    )
-
-    FSlotText := GuiCD.AddText(
-        "x" (4 + halfWidth)
-        . " y4 w" halfWidth
-        . " h" SlotRowHeight
-        . " Center +0x200",
-        "F槽：未同步"
-    )
-
-    row2Y := 4 + SlotRowHeight
+    row2Y := 4
 
     HeroLevelText := GuiCD.AddText(
         "x4 y" row2Y " w" halfWidth " h" lineH " Center +0x200",
@@ -122,8 +105,6 @@ CreateCDGui() {
 UpdateCDGui() {
     global DSkill
     global FSkill
-    global DSlotText
-    global FSlotText
     global HotkeyLayout
     global SkillByHotkey
     global CDHotkeyText
@@ -131,49 +112,6 @@ UpdateCDGui() {
     global HeroLevelText
     global RCDText
     global UiRReady
-
-    UpdateSlotText(DSlotText, "D", DSkill)
-    UpdateSlotText(FSlotText, "F", FSkill)
-
-    for rowItems in HotkeyLayout {
-        for hkName in rowItems {
-            if !SkillByHotkey.Has(hkName)
-                continue
-
-            skill := SkillByHotkey[hkName]
-            remaining := GetSkillRemaining(skill)
-            control := CDHotkeyText[hkName]
-            isInSlot := skill = DSkill || skill = FSkill
-
-            if remaining <= 0 {
-                control.Text := skill
-
-                if isInSlot {
-                    control.SetFont(
-                        "s9 Bold c30FF30",
-                        "Arial Black"
-                    )
-                } else if IsRReady() {
-                    control.SetFont(
-                        "s8 Norm c8080FF",
-                        "Segoe UI"
-                    )
-                } else {
-                    control.SetFont(
-                        "s8 Norm cFFFFFF",
-                        "Segoe UI"
-                    )
-                }
-            } else {
-                control.Text := skill " " Round(remaining / 1000, 1) "秒"
-
-                control.SetFont(
-                    "s8 Norm cFF3030",
-                    "Segoe UI"
-                )
-            }
-        }
-    }
 
     HeroLevelText.Text := "等级：" HeroLevel
 
@@ -199,6 +137,54 @@ UpdateCDGui() {
         )
         UiRReady := false
     }
+
+    for rowItems in HotkeyLayout {
+        for hkName in rowItems {
+            if !SkillByHotkey.Has(hkName)
+                continue
+
+            skill := SkillByHotkey[hkName]
+            remaining := GetSkillRemaining(skill)
+            control := CDHotkeyText[hkName]
+            isInSlot := skill = DSkill || skill = FSkill
+
+            if skill = DSkill {
+                skillText := "D:" skill
+            } else if skill = FSkill {
+                skillText := "F:" skill
+            } else {
+                skillText := skill
+            }
+
+            if remaining <= 0 {
+                control.Text := skillText
+
+                if isInSlot {
+                    control.SetFont(
+                        "s9 Bold c30FF30",
+                        "Arial Black"
+                    )
+                } else if IsRReady() {
+                    control.SetFont(
+                        "s8 Norm c8080FF",
+                        "Segoe UI"
+                    )
+                } else {
+                    control.SetFont(
+                        "s8 Norm cFFFFFF",
+                        "Segoe UI"
+                    )
+                }
+            } else {
+                control.Text := skillText " " Round(remaining / 1000, 1) "秒"
+
+                control.SetFont(
+                    "s8 Norm cFF3030",
+                    "Segoe UI"
+                )
+            }
+        }
+    }
 }
 
 
@@ -216,25 +202,6 @@ FormatGameTime(seconds) {
     remainSeconds := Mod(seconds, 60)
 
     return sign Format("{:02}:{:02}", minutes, remainSeconds)
-}
-
-
-UpdateSlotText(control, slotName, skill) {
-    global SkillByName
-
-    if skill = "" {
-        control.Text := slotName "槽：未同步"
-        control.SetFont("s13 Bold cAAAAAA", "Segoe UI")
-        return
-    }
-
-    hotkey := StrUpper(SkillByName[skill].hotkey)
-    control.Text := slotName "槽：" skill " " hotkey
-
-    if GetSkillRemaining(skill) <= 0
-        control.SetFont("s13 Bold c00FF00", "Segoe UI")
-    else
-        control.SetFont("s13 Bold cFF3030", "Segoe UI")
 }
 
 ShowCDGui() {
