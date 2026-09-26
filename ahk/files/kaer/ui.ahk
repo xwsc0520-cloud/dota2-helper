@@ -175,20 +175,17 @@ UpdateCDGui() {
             control := CDHotkeyText[hkName]
             isInSlot := skill = DSkill || skill = FSkill
 
-            if skill = DSkill {
-                skillText := skill
-            } else if skill = FSkill {
-                skillText := "!" skill "!"
-            } else {
-                skillText := skill
+            slotColor := "c30FF30"
+            if skill = FSkill {
+                slotColor := "cFFFF30"
             }
 
             if remaining <= 0 {
-                control.Text := skillText
+                control.Text := skill
 
                 if isInSlot {
                     control.SetFont(
-                        "s9 Bold c30FF30",
+                        "s9 Bold " slotColor,
                         "Arial Black"
                     )
                 } else if IsRReady() {
@@ -203,7 +200,7 @@ UpdateCDGui() {
                     )
                 }
             } else {
-                control.Text := skillText " " Round(remaining / 1000, 1) "秒"
+                control.Text := skill " " Round(remaining / 1000, 1) "秒"
 
                 control.SetFont(
                     "s8 Norm cFF3030",
