@@ -1,6 +1,7 @@
 global GuiCD := ""
 global HeroLevelText := ""
 global RCDText := ""
+global LinglongxinText := ""
 global CDHotkeyText := Map()
 global GSIClockText
 
@@ -10,6 +11,7 @@ CreateCDGui() {
     global GuiCD
     global HeroLevelText
     global RCDText
+    global LinglongxinText
     global CDHotkeyText
 
     global CDTotalWidth
@@ -37,22 +39,31 @@ CreateCDGui() {
 
     GuiCD.SetFont("s11 Bold cFFFFFF", "Segoe UI")
 
-    halfWidth := Floor(CDTotalWidth / 2)
+    width_3_1 := Floor(CDTotalWidth / 3)
 
     row2Y := 4
 
     HeroLevelText := GuiCD.AddText(
-        "x4 y" row2Y " w" halfWidth " h" lineH " Center +0x200",
+        "x4 y" row2Y " w" width_3_1 " h" lineH " Center +0x200",
         "等级：1"
     )
 
     RCDText := GuiCD.AddText(
-        "x" (4 + halfWidth)
+        "x" (4 + width_3_1)
         . " y" row2Y
-        . " w" halfWidth
+        . " w" width_3_1
         . " h" lineH
         . " Center +0x200",
         "R：就绪"
+    )
+
+    LinglongxinText := GuiCD.AddText(
+        "x" (4 + width_3_1 * 2)
+        . " y" row2Y
+        . " w" width_3_1
+        . " h" lineH
+        . " Center +0x200",
+        "玲珑心：无"
     )
 
     gridY := row2Y + lineH + 1
@@ -112,6 +123,8 @@ UpdateCDGui() {
     global HeroLevelText
     global RCDText
     global UiRReady
+    global Linglongxin
+    global LinglongxinText
 
     HeroLevelText.Text := "等级：" HeroLevel
 
@@ -136,6 +149,20 @@ UpdateCDGui() {
             "Segoe UI"
         )
         UiRReady := false
+    }
+
+    if Linglongxin {
+        LinglongxinText.Text := "玲珑心：有"
+        LinglongxinText.SetFont(
+            "s8 Bold c00FF00",
+            "Segoe UI"
+        )
+    } else {
+        LinglongxinText.Text := "玲珑心：无"
+        LinglongxinText.SetFont(
+            "s8 Bold cFF3030",
+            "Segoe UI"
+        )
     }
 
     for rowItems in HotkeyLayout {

@@ -16,6 +16,7 @@ global RLevelCDList := [
 
 ; combo 不包含 r，切换时自动追加
 ; cast 中的 "df" 会按实际槽位替换为 d/f
+global Jileng := "极冷"
 global SkillConfigs := [
     {
         hotkey: "q", combo: "qww", name: "吹风",
@@ -40,7 +41,7 @@ global SkillConfigs := [
         cast: ["{LAlt down}", "df", "{LAlt up}", dl, "a", "e", "e", "e"]
     },
     {
-        hotkey: "a", combo: "qqq", name: "极冷",
+        hotkey: "a", combo: "qqq", name: Jileng,
         cd: 19000, cast: ["df", "2"]
     },
     {

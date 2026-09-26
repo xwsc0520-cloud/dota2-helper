@@ -49,12 +49,19 @@ IsSkillReady(skill) {
 }
 
 GetSkillRemaining(skill) {
-    global SkillCD, SkillLastCast, Linglongxin
+    global SkillCD, SkillLastCast, Linglongxin, HeroLevel, Jileng
 
     if skill = "" || !SkillCD.Has(skill) || !SkillLastCast.Has(skill)
         return 0
 
     cd := SkillCD[skill]
+
+    if skill = Jileng {
+        if HeroLevel >= 15 {
+            cd := cd - 6000
+        }
+    }
+
     if Linglongxin {
         cd := cd * 0.75
     }
