@@ -1,13 +1,9 @@
 SwitchOnly(skill) {
-    if skill != ""
-        SwitchSkill(skill)
+    SwitchSkill(skill)
 }
 
 SwitchThenCast(skill) {
     global DSkill, FSkill
-
-    if skill = ""
-        return
 
     ; 已在槽位中：直接释放，不发送 R
     if DSkill = skill {
@@ -27,73 +23,26 @@ SwitchThenCast(skill) {
 
 SwitchSkill(skill) {
     global DSkill, FSkill
-
-    if skill = ""
-        return false
-
-    if DSkill = skill
-        return true
+    global SkillByName, RLastCast
 
     if !IsRReady()
         return false
 
-    ; F 槽技能切到 D：交换槽位
-    if FSkill = skill {
-        if !SendSwitchCommand(skill, true)
-            return false
-
-        oldD := DSkill
-        DSkill := skill
-        FSkill := oldD
-        return true
-    }
-
-    ; 保留原有的槽位整理逻辑
-    if DSkill != "" && FSkill != "" {
-        if !IsSkillReady(DSkill) && IsSkillReady(FSkill)
-            SwitchFToD()
-    }
-
-    if !SendSwitchCommand(skill, false)
-        return false
-
-    FSkill := DSkill
-    DSkill := skill
-    return true
-}
-
-SwitchFToD() {
-    global DSkill, FSkill
-
-    if FSkill = "" || !IsRReady()
-        return
-
-    skill := FSkill
-    oldD := DSkill
-
-    if !SendSwitchCommand(skill, true)
-        return
-
-    DSkill := skill
-    FSkill := oldD
-}
-
-SendSwitchCommand(skill, f_to_d) {
-    global SkillByName, RLastCast
-
-    if skill = "" || !SkillByName.Has(skill) || !IsRReady()
-        return false
-
     combo := []
-
     Loop Parse, SkillByName[skill].combo
         combo.Push(A_LoopField)
-
     combo.Push("r")
+    combo.Push(dl)
     AddCombo(combo)
 
-    if !f_to_d
+    if skill != FSkill && skill != DSkill {
         RLastCast := A_TickCount
+    }
+
+    if skill != DSkill {
+        FSkill := DSkill
+        DSkill := skill
+    }
 
     return true
 }
@@ -108,20 +57,14 @@ CastCurrentSlot(position) {
     else
         return
 
-    if skill = "" || !IsSkillReady(skill)
-        return
-
-    AddCombo([position])
+    AddCombo([position, dl])
     MarkSkillCast(skill)
 }
 
 CastSkill(skill, position) {
     global SkillByName, dl
 
-    if skill = "" || !SkillByName.Has(skill) || !IsSkillReady(skill)
-        return
-
-    combo := [dl]
+    combo := []
 
     for item in SkillByName[skill].cast {
         if Type(item) = "String" && item = "df" {
@@ -133,6 +76,7 @@ CastSkill(skill, position) {
         }
     }
 
+    combo.Push(dl)
     AddCombo(combo)
     MarkSkillCast(skill)
 }

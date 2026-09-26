@@ -1,3 +1,10 @@
+LShift::F1
+LAlt::F2
+LWin::F3
+
+F11::ChangeLinglongxin(false)
+F12::ChangeLinglongxin(true)
+
 PgUp::ShowCDGui()
 PgDn::HideCDGui()
 
@@ -8,8 +15,6 @@ Down::ChangeHeroLevel(-1)
 
 $d::CastCurrentSlot("d")
 $f::CastCurrentSlot("f")
-
-$LAlt::Return
 
 RegisterAllSkillHotkeys() {
     global SkillConfigs

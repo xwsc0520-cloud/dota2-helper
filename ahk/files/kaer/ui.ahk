@@ -12,7 +12,6 @@ CreateCDGui() {
     global FSlotText
     global HeroLevelText
     global RCDText
-    global GSIClockText
     global CDHotkeyText
 
     global CDTotalWidth
@@ -31,53 +30,56 @@ CreateCDGui() {
     )
 
     GuiCD.BackColor := "202020"
-    GuiCD.MarginX := 8
-    GuiCD.MarginY := 8
+    GuiCD.MarginX := 4
+    GuiCD.MarginY := 4
 
-    GuiCD.SetFont("s13 Bold cFFFFFF", "Segoe UI")
+    SlotRowHeight := 18
+    CDCellHeight  := 22
+    lineH         := 16
+
+    GuiCD.SetFont("s11 Bold cFFFFFF", "Segoe UI")
 
     halfWidth := Floor(CDTotalWidth / 2)
 
     DSlotText := GuiCD.AddText(
-        "x8 y8 w" halfWidth " h" SlotRowHeight " Center",
+        "x4 y4 w" halfWidth " h" SlotRowHeight " Center +0x200",
         "D槽：未同步"
     )
 
     FSlotText := GuiCD.AddText(
-        "x" (8 + halfWidth)
-        . " y8 w" halfWidth
+        "x" (4 + halfWidth)
+        . " y4 w" halfWidth
         . " h" SlotRowHeight
-        . " Center",
+        . " Center +0x200",
         "F槽：未同步"
     )
 
+    row2Y := 4 + SlotRowHeight
+
     HeroLevelText := GuiCD.AddText(
-        "x8 y42 w" halfWidth " h20 Center",
+        "x4 y" row2Y " w" halfWidth " h" lineH " Center +0x200",
         "等级：1"
     )
 
     RCDText := GuiCD.AddText(
-        "x" (8 + halfWidth)
-        . " y42 w" halfWidth
-        . " h20 Center",
+        "x" (4 + halfWidth)
+        . " y" row2Y
+        . " w" halfWidth
+        . " h" lineH
+        . " Center +0x200",
         "R：就绪"
     )
 
-    ; 游戏时间
-    GSIClockText := GuiCD.AddText(
-        "x8 y62 w" CDTotalWidth " h30 Center",
-        "游戏时间：未同步"
-    )
-    GSIClockText.Visible := false
+    gridY := row2Y + lineH + 1
 
     for rowIndex, rowItems in HotkeyLayout {
-        rowY := 8 + SlotRowHeight + 18 + (rowIndex - 1) * CDCellHeight
+        rowY := gridY + (rowIndex - 1) * CDCellHeight
 
         for colIndex, hkName in rowItems {
-            cellX := 8 + (colIndex - 1) * CDCellWidth
+            cellX := 4 + (colIndex - 1) * CDCellWidth
             controlName := "CD_" hkName
 
-            GuiCD.SetFont("s10 Norm cFFFFFF", "Segoe UI")
+            GuiCD.SetFont("s8 Norm cFFFFFF", "Segoe UI")
 
             GuiCD.AddText(
                 "x" cellX
@@ -92,12 +94,21 @@ CreateCDGui() {
         }
     }
 
+    rows := HotkeyLayout.Length
+    CDWindowHeight := gridY + rows * CDCellHeight + 4
+    CDWindowWidth  := 4 + CDTotalWidth + 4
+
     GuiCD.Show(
-        "x20 y200"
-        . " w" CDWindowWidth
-        . " h" (CDWindowHeight + 18)
+        "w" CDWindowWidth
+        . " h" CDWindowHeight
         . " NoActivate"
     )
+
+    ; 屏幕底部居中，向上偏移一点
+    offsetUp := 150
+    posX := Round((A_ScreenWidth - CDWindowWidth) / 2)
+    posY := A_ScreenHeight - CDWindowHeight - offsetUp
+    WinMove(posX, posY, , , "ahk_id " GuiCD.Hwnd)
 
     WinSetTransparent(
         GUI_TRANSPARENCY,
@@ -118,18 +129,6 @@ UpdateCDGui() {
     global HeroLevelText
     global RCDText
 
-    global GSIClockText
-    global GSIDataReady
-    global GSIClockTime
-    global HeroLevel
-
-    if GSIDataReady {
-        GSIClockText.Text :=
-            "游戏时间：" FormatGameTime(GSIClockTime)
-    } else {
-        GSIClockText.Text := "游戏时间：未同步"
-    }
-
     UpdateSlotText(DSlotText, "D", DSkill)
     UpdateSlotText(FSlotText, "F", FSkill)
 
@@ -148,17 +147,17 @@ UpdateCDGui() {
 
                 if isInSlot {
                     control.SetFont(
-                        "s11 Bold c30FF30",
+                        "s9 Bold c30FF30",
                         "Arial Black"
                     )
                 } else if IsRReady() {
                     control.SetFont(
-                        "s10 Norm c8080FF",
+                        "s8 Norm c8080FF",
                         "Segoe UI"
                     )
                 } else {
                     control.SetFont(
-                        "s10 Norm cFFFFFF",
+                        "s8 Norm cFFFFFF",
                         "Segoe UI"
                     )
                 }
@@ -166,7 +165,7 @@ UpdateCDGui() {
                 control.Text := skill " " Round(remaining / 1000, 1) "秒"
 
                 control.SetFont(
-                    "s10 Norm cFF3030",
+                    "s8 Norm cFF3030",
                     "Segoe UI"
                 )
             }
@@ -180,7 +179,7 @@ UpdateCDGui() {
     if rRemaining <= 0 {
         RCDText.Text := "R：就绪"
         RCDText.SetFont(
-            "s10 Bold c00FF00",
+            "s8 Bold c00FF00",
             "Segoe UI"
         )
     } else {
@@ -188,7 +187,7 @@ UpdateCDGui() {
             "R：" Round(rRemaining / 1000, 1) "秒"
 
         RCDText.SetFont(
-            "s10 Bold cFF3030",
+            "s8 Bold cFF3030",
             "Segoe UI"
         )
     }

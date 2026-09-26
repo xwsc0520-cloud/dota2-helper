@@ -9,6 +9,8 @@ global DSkill := ""
 global FSkill := ""
 global RLastCast := 0
 
+global linglongxin := false
+
 InitSkillState() {
     global SkillConfigs, Skills, SkillByHotkey
     global SkillByName, SkillCD, SkillLastCast
@@ -38,16 +40,26 @@ IsSkillReady(skill) {
     if !SkillCD.Has(skill) || !SkillLastCast.Has(skill)
         return true
 
-    return A_TickCount - SkillLastCast[skill] >= SkillCD[skill]
+    cd := SkillCD[skill]
+    if Linglongxin {
+        cd := cd * 0.75
+    }
+
+    return A_TickCount - SkillLastCast[skill] >= cd
 }
 
 GetSkillRemaining(skill) {
-    global SkillCD, SkillLastCast
+    global SkillCD, SkillLastCast, Linglongxin
 
     if skill = "" || !SkillCD.Has(skill) || !SkillLastCast.Has(skill)
         return 0
 
-    remaining := SkillCD[skill] - (A_TickCount - SkillLastCast[skill])
+    cd := SkillCD[skill]
+    if Linglongxin {
+        cd := cd * 0.75
+    }
+
+    remaining := cd - (A_TickCount - SkillLastCast[skill])
     return Max(remaining, 0)
 }
 
@@ -64,6 +76,11 @@ ChangeHeroLevel(amount) {
         HeroLevel := RLevelCDList.Length
 }
 
+ChangeLinglongxin(has) {
+    global Linglongxin
+    Linglongxin := has
+}
+
 GetCurrentRCD() {
     global HeroLevel, RLevelCDList
 
@@ -71,7 +88,13 @@ GetCurrentRCD() {
         return 0
 
     level := Max(1, Min(HeroLevel, RLevelCDList.Length))
-    return RLevelCDList[level]
+    cd := RLevelCDList[level]
+
+    if Linglongxin {
+        cd := cd * 0.75
+    }
+
+    return cd
 }
 
 IsRReady() {
