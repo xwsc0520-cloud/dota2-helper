@@ -9,7 +9,7 @@ global DSkill := ""
 global FSkill := ""
 global RLastCast := 0
 
-global linglongxin := false
+global Linglongxin := false
 
 InitSkillState() {
     global SkillConfigs, Skills, SkillByHotkey

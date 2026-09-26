@@ -1,11 +1,14 @@
-global defaultDelay := 30
+#Requires AutoHotkey v2.0
+
+global defaultDelay := 50
 global comboQueue := []
 global queueRunning := false
 global queueCancel := false
 
-; ~Esc::CancelComboQueue()
 
-
+; =========================
+; 取消当前队列
+; =========================
 CancelComboQueue()
 {
     global comboQueue, queueRunning, queueCancel
@@ -13,17 +16,35 @@ CancelComboQueue()
     comboQueue := []
     queueCancel := true
 
+    ; 防止修饰键残留
+    SendEvent "{LAlt up}"
+    SendEvent "{RAlt up}"
+    SendEvent "{LCtrl up}"
+    SendEvent "{RCtrl up}"
+    SendEvent "{LShift up}"
+    SendEvent "{RShift up}"
+    SendEvent "{LWin up}"
+    SendEvent "{RWin up}"
+
     if !queueRunning
         queueCancel := false
 }
 
 
+; =========================
+; 添加一个按键/延迟序列
+;
+; 字符串：按键
+; 数字：延迟毫秒数
+; =========================
 AddCombo(combo)
 {
     global comboQueue, queueRunning, queueCancel
 
     if !IsObject(combo)
-        throw TypeError("AddCombo(): combo 必须是数组或其他可枚举对象")
+        throw TypeError(
+            "AddCombo(): combo 必须是数组或其他可枚举对象"
+        )
 
     actions := []
 
@@ -33,7 +54,9 @@ AddCombo(combo)
     }
 
     if actions.Length = 0
-        throw ValueError("AddCombo(): combo 不能为空")
+        throw ValueError(
+            "AddCombo(): combo 不能为空"
+        )
 
     comboQueue.Push(actions)
 
@@ -45,60 +68,24 @@ AddCombo(combo)
 }
 
 
+; =========================
+; 解析输入项
+; =========================
 ParseComboItem(item, index)
 {
-    ; 延迟对象或组合键对象
-    if IsObject(item) {
-        hasKey := item.HasOwnProp("key")
-        hasMods := item.HasOwnProp("mods")
-        hasDelay := item.HasOwnProp("delay")
-        hasSleep := item.HasOwnProp("sleep")
-
-        ; 组合键对象
-        if hasKey {
-            if hasDelay || hasSleep
-                throw ValueError(
-                    "combo[" index "]: 组合键对象不能同时包含 delay 或 sleep"
-                )
-
-            key := item.key
-            mods := hasMods ? item.mods : ""
-
-            ValidateKey(key, index)
-            ValidateMods(mods, index)
-
-            return {
-                type: "send",
-                value: "{Blind}" mods key
-            }
-        }
-
-        ; delay 对象
-        if hasDelay || hasSleep {
-            if hasDelay && hasSleep
-                throw ValueError(
-                    "combo[" index "]: 不能同时包含 delay 和 sleep"
-                )
-
-            delayValue := hasDelay ? item.delay : item.sleep
-
-            ValidateDelay(delayValue, index)
-
-            return {
-                type: "delay",
-                value: delayValue
-            }
-        }
-
-        throw ValueError(
-            "combo[" index "]: 对象必须是 {key: ..., mods: ...}、"
-            . "{delay: ...} 或 {sleep: ...}"
-        )
-    }
-
-    ; 数字表示延迟
     itemType := Type(item)
 
+    ; 字符串：按键
+    if itemType = "String" {
+        ValidateKeyString(item, index)
+
+        return {
+            type: "send",
+            value: "{Blind}" item
+        }
+    }
+
+    ; 整数或小数：延迟
     if itemType = "Integer" || itemType = "Float" {
         ValidateDelay(item, index)
 
@@ -108,41 +95,78 @@ ParseComboItem(item, index)
         }
     }
 
-    ; 字符串表示单个按键
-    if itemType = "String" {
-        ValidateStandaloneKey(item, index)
-
-        return {
-            type: "send",
-            value: "{Blind}" item
-        }
-    }
-
     throw TypeError(
-        "combo[" index "]: 只允许单个按键、组合键对象或数字延迟"
+        "combo[" index "]: 只允许字符串按键或数字延迟"
     )
 }
 
 
-ValidateKey(key, index)
+; =========================
+; 验证按键字符串
+;
+; 允许：
+;   "a"
+;   "1"
+;   "{Enter}"
+;   "{F2}"
+;   "{LAlt down}"
+;   "{LAlt up}"
+; =========================
+ValidateKeyString(key, index)
 {
-    if Type(key) != "String" || key = ""
+    if key = ""
         throw ValueError(
-            "combo[" index "].key: 必须是单个按键名称，不能是空字符串"
+            "combo[" index "]: 按键不能为空"
         )
 
-    ; 普通组合键中的 key 只能是一个字符。
-    ; 特殊按键可以使用 AHK 名称，例如 Enter、Esc、F1。
+    ; 普通单字符，例如 a、1、?
     if StrLen(key) = 1
         return
 
-    ; 允许的特殊键名
-    allowedNames := Map(
+    ; 显式 AHK 按键格式
+    if !RegExMatch(key, "^\{([^{}]+)\}$", &match)
+        throw ValueError(
+            "combo[" index "]: " key
+            " 不是有效的单个按键"
+        )
+
+    token := match[1]
+
+    ; 允许：
+    ; {Key}
+    ; {Key down}
+    ; {Key up}
+    if !RegExMatch(
+        token,
+        "i)^([A-Za-z][A-Za-z0-9]*)(?:\s+(down|up))?$",
+        &parts
+    ) {
+        throw ValueError(
+            "combo[" index "]: 无效的按键格式：" key
+        )
+    }
+
+    keyName := parts[1]
+
+    if !IsAllowedKeyName(keyName)
+        throw ValueError(
+            "combo[" index "]: 不允许的按键名称：" keyName
+        )
+}
+
+
+; =========================
+; 判断是否为允许的按键名称
+; =========================
+IsAllowedKeyName(keyName)
+{
+    static allowedNames := Map(
         "LButton", true,
         "RButton", true,
         "MButton", true,
         "XButton1", true,
         "XButton2", true,
+
         "Backspace", true,
         "Tab", true,
         "Enter", true,
@@ -154,23 +178,27 @@ ValidateKey(key, index)
         "End", true,
         "PgUp", true,
         "PgDn", true,
+
         "Up", true,
         "Down", true,
         "Left", true,
         "Right", true,
+
         "PrintScreen", true,
         "Pause", true,
         "AppsKey", true,
-        "Numpad0", true,
-        "Numpad1", true,
-        "Numpad2", true,
-        "Numpad3", true,
-        "Numpad4", true,
-        "Numpad5", true,
-        "Numpad6", true,
-        "Numpad7", true,
-        "Numpad8", true,
-        "Numpad9", true,
+
+        "CapsLock", true,
+
+        "LAlt", true,
+        "RAlt", true,
+        "LCtrl", true,
+        "RCtrl", true,
+        "LShift", true,
+        "RShift", true,
+        "LWin", true,
+        "RWin", true,
+
         "NumpadAdd", true,
         "NumpadSub", true,
         "NumpadMult", true,
@@ -179,58 +207,21 @@ ValidateKey(key, index)
         "NumpadEnter", true
     )
 
-    if RegExMatch(key, "i)^F([1-9]|1[0-9]|2[0-4])$")
-        return
+    ; F1-F24
+    if RegExMatch(keyName, "i)^F([1-9]|1[0-9]|2[0-4])$")
+        return true
 
-    if allowedNames.Has(key)
-        return
+    ; Numpad0-Numpad9
+    if RegExMatch(keyName, "i)^Numpad[0-9]$")
+        return true
 
-    throw ValueError(
-        "combo[" index "].key: 不允许连续多个按键：" key
-    )
+    return allowedNames.Has(keyName)
 }
 
 
-ValidateStandaloneKey(key, index)
-{
-    if key = ""
-        throw ValueError(
-            "combo[" index "]: 按键不能为空"
-        )
-
-    ; 普通字符串只能表示一个字符。
-    if StrLen(key) = 1
-        return
-
-    ; 特殊键必须用 {Enter}、{Esc}、{F1} 这种形式。
-    if RegExMatch(key, "^\{[^{}]+\}$")
-        return
-
-    throw ValueError(
-        "combo[" index "]: " key " 不是单个按键。"
-    )
-}
-
-
-ValidateMods(mods, index)
-{
-    if Type(mods) != "String"
-        throw TypeError(
-            "combo[" index "].mods: 必须是字符串"
-        )
-
-    ; AHK 修饰符：
-    ; ^ Ctrl
-    ; ! Alt
-    ; + Shift
-    ; # Win
-    if !RegExMatch(mods, "^[\^\!\+\#]*$")
-        throw ValueError(
-            "combo[" index "].mods: 只能使用 ^、!、+、#"
-        )
-}
-
-
+; =========================
+; 验证延迟
+; =========================
 ValidateDelay(value, index)
 {
     valueType := Type(value)
@@ -247,6 +238,9 @@ ValidateDelay(value, index)
 }
 
 
+; =========================
+; 执行队列
+; =========================
 ProcessComboQueue()
 {
     global comboQueue, queueRunning, queueCancel
@@ -261,7 +255,7 @@ ProcessComboQueue()
 
                 switch action.type {
                     case "send":
-                        Send(action.value)
+                        SendEvent(action.value)
                         RandomDelay(defaultDelay)
 
                     case "delay":
@@ -285,6 +279,10 @@ ProcessComboQueue()
 }
 
 
+; =========================
+; 随机延迟
+; 实际延迟为 baseTime 的 85%~115%
+; =========================
 RandomDelay(baseTime)
 {
     global queueCancel

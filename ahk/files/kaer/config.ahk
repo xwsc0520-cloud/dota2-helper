@@ -37,7 +37,7 @@ global SkillConfigs := [
     {
         hotkey: "e", combo: "wwe", name: "灵动",
         cd: 15000,
-        cast: [{key: "df", mods: "!"}, dl, "a", "e", "e", "e"]
+        cast: ["{LAlt down}", "df", "{LAlt up}", dl, "a", "e", "e", "e"]
     },
     {
         hotkey: "a", combo: "qqq", name: "极冷",

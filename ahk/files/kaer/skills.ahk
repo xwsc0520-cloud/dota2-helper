@@ -25,8 +25,10 @@ SwitchSkill(skill) {
     global DSkill, FSkill
     global SkillByName, RLastCast
 
-    if !IsRReady()
+    if !IsRReady() {
+        SoundBeep(1000, 100)
         return false
+    }
 
     combo := []
     Loop Parse, SkillByName[skill].combo
@@ -54,8 +56,10 @@ CastCurrentSlot(position) {
         skill := DSkill
     else if position = "f"
         skill := FSkill
-    else
+    else {
+        SoundBeep(1000, 100)
         return
+    }
 
     AddCombo([position, dl])
     MarkSkillCast(skill)
@@ -67,27 +71,13 @@ CastSkill(skill, position) {
     combo := []
 
     for item in SkillByName[skill].cast {
-        if Type(item) = "String" && item = "df" {
-            combo.Push(position)
-        } else if IsAltDObject(item) {
-            combo.Push({key: position, mods: "!"})
-        } else {
-            combo.Push(item)
+        if item = "df" {
+            item := position
         }
+        combo.Push(item)
     }
 
     combo.Push(dl)
     AddCombo(combo)
     MarkSkillCast(skill)
-}
-
-IsAltDObject(item) {
-    if !IsObject(item)
-        return false
-
-    try {
-        return item.key = "df" && item.mods = "!"
-    } catch {
-        return false
-    }
 }

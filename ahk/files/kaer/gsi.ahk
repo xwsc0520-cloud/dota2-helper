@@ -64,6 +64,7 @@ PollGSIData() {
     global GSIDataReady, GSILastUpdate
     global HeroLevel, MinHeroLevel, MaxHeroLevel
     global RLevelCDList
+    global Linglongxin
 
     updated := false
 
@@ -95,6 +96,10 @@ PollGSIData() {
                     GSIHeroLevel := level
                     HeroLevel := level
                     updated := true
+
+                    if level < 6 {
+                        Linglongxin := false
+                    }
                 }
             }
 
