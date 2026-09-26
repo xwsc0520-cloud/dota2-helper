@@ -52,16 +52,16 @@ SwitchSkill(skill) {
 CastCurrentSlot(position) {
     global DSkill, FSkill
 
-    if position = "d"
+    AddCombo([position, dl])
+
+    if position = "d" {
         skill := DSkill
-    else if position = "f"
+    } else if position = "f" {
         skill := FSkill
-    else {
+    } else {
         SoundSkillUnavailableAsync()
         return
     }
-
-    AddCombo([position, dl])
     MarkSkillCast(skill)
 }
 

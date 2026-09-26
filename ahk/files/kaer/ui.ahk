@@ -176,9 +176,9 @@ UpdateCDGui() {
             isInSlot := skill = DSkill || skill = FSkill
 
             if skill = DSkill {
-                skillText := "D:" skill
+                skillText := skill
             } else if skill = FSkill {
-                skillText := "F:" skill
+                skillText := "!" skill "!"
             } else {
                 skillText := skill
             }
