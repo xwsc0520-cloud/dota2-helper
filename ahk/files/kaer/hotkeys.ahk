@@ -25,8 +25,6 @@ F12:: {
 
 #HotIf IsTargetWindow()
 
-LShift::F1
-
 Up::ChangeHeroLevel(1)
 Down::ChangeHeroLevel(-1)
 
@@ -69,7 +67,7 @@ SetAllSkillHotkeys(enabled) {
         )
 
         listener.AddModifier(
-            "LAlt",
+            "F1",
             OnAltSkillCombo
         )
 
