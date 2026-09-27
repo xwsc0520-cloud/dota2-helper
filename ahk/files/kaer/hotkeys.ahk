@@ -19,6 +19,9 @@ F12:: {
         SetAllSkillHotkeys(false)
         Suspend(true)
         HideCDGui()
+
+        ResetAllState()
+        CancelComboQueue()
     }
 }
 #SuspendExempt False
@@ -30,8 +33,6 @@ Down::ChangeHeroLevel(-1)
 
 Left::ChangeLinglongxin(false)
 Right::ChangeLinglongxin(true)
-
-~Esc::ResetAllState()
 
 #HotIf
 
