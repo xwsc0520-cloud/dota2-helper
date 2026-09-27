@@ -104,7 +104,11 @@ SkillHotkeysCondition(*) {
 
 ; 普通单键：只有松开 q 时才执行
 OnSingleSkillKey(key, skill) {
-    AddCombo([key])
+    if key = "d" || key = "f" {
+        CastSlot(key)
+    } else {
+        AddCombo([key])
+    }
 }
 
 
