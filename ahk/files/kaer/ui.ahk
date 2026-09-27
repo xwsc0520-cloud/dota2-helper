@@ -247,12 +247,16 @@ HideCDGui() {
 
 SoundSkillReadyAsync()
 {
-    SetTimer(() => SoundSkillReady(), -1)
+    SetTimer(SoundSkillReadyPart1, -1)
 }
 
-SoundSkillReady()
+SoundSkillReadyPart1()
 {
     SoundBeep(660, 80)
-    Sleep(35)
+    SetTimer(SoundSkillReadyPart2, -35)
+}
+
+SoundSkillReadyPart2()
+{
     SoundBeep(990, 120)
 }

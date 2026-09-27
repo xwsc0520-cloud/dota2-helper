@@ -31,10 +31,6 @@ SwitchSkill(skill) {
     combo.Push(dl)
     AddCombo(combo)
 
-    if !IsRReady() {
-        SoundSkillUnavailableAsync()
-    }
-
     if skill != FSkill && skill != DSkill {
         RLastCast := A_TickCount
     }
@@ -63,18 +59,3 @@ CastSkill(skill, position) {
     AddCombo(combo)
     MarkSkillCast(skill)
 }
-
-SoundSkillUnavailableAsync()
-{
-    SetTimer(() => SoundSkillUnavailable(), -1)
-}
-
-SoundSkillUnavailable()
-{
-    SoundBeep(220, 100)
-    Sleep(35)
-    SoundBeep(180, 120)
-}
-
-
-
