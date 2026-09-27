@@ -5,6 +5,7 @@ SendMode("Input")
 SetWorkingDir(A_ScriptDir)
 
 #Include %A_ScriptDir%\..\common\queue.ahk
+#Include %A_ScriptDir%\..\common\OverlapComboListener.ahk
 
 #Include %A_ScriptDir%\config.ahk
 #Include %A_ScriptDir%\state.ahk

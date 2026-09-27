@@ -16,19 +16,13 @@ SwitchThenCast(skill) {
         return
     }
 
-    ; 不在槽位中：切入 D 后释放
-    if SwitchSkill(skill)
-        CastSkill(skill, "d")
+    SwitchSkill(skill)
+    CastSkill(skill, "d")
 }
 
 SwitchSkill(skill) {
     global DSkill, FSkill
     global SkillByName, RLastCast
-
-    if !IsRReady() {
-        SoundSkillUnavailableAsync()
-        return false
-    }
 
     combo := []
     Loop Parse, SkillByName[skill].combo
@@ -36,6 +30,10 @@ SwitchSkill(skill) {
     combo.Push("r")
     combo.Push(dl)
     AddCombo(combo)
+
+    if !IsRReady() {
+        SoundSkillUnavailableAsync()
+    }
 
     if skill != FSkill && skill != DSkill {
         RLastCast := A_TickCount
@@ -47,22 +45,6 @@ SwitchSkill(skill) {
     }
 
     return true
-}
-
-CastCurrentSlot(position) {
-    global DSkill, FSkill
-
-    AddCombo([position, dl])
-
-    if position = "d" {
-        skill := DSkill
-    } else if position = "f" {
-        skill := FSkill
-    } else {
-        SoundSkillUnavailableAsync()
-        return
-    }
-    MarkSkillCast(skill)
 }
 
 CastSkill(skill, position) {

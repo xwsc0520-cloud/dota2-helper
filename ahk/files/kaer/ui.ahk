@@ -101,7 +101,7 @@ CreateCDGui() {
     )
 
     ; 屏幕底部居中，向上偏移一点
-    offsetUp := 150
+    offsetUp := 180
     posX := Round((A_ScreenWidth - CDWindowWidth) / 2)
     posY := A_ScreenHeight - CDWindowHeight - offsetUp
     WinMove(posX, posY, , , "ahk_id " GuiCD.Hwnd)
@@ -175,13 +175,13 @@ UpdateCDGui() {
             control := CDHotkeyText[hkName]
             isInSlot := skill = DSkill || skill = FSkill
 
-            slotColor := "c30FF30"
-            if skill = FSkill {
-                slotColor := "cFFFF30"
-            }
-
             if remaining <= 0 {
                 control.Text := skill
+
+                slotColor := "c30FF30"
+                if skill = FSkill {
+                    slotColor := "cFFFF30"
+                }
 
                 if isInSlot {
                     control.SetFont(
@@ -200,7 +200,14 @@ UpdateCDGui() {
                     )
                 }
             } else {
-                control.Text := skill " " Round(remaining / 1000, 1) "秒"
+                skillText := skill
+                if skill = DSkill {
+                    skillText := "D:" skillText
+                } else if skill = FSkill {
+                    skillText := "F:" skillText
+                }
+
+                control.Text := skillText Round(remaining / 1000, 0)
 
                 control.SetFont(
                     "s8 Norm cFF3030",
