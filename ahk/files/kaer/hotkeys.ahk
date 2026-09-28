@@ -40,53 +40,42 @@ Right::ChangeLinglongxin(true)
 ; 组合键监听器实例
 ; ============================================================
 
-global SkillComboListener := 0
-
+global listener := 0
 
 RegisterAllSkillHotkeys() {
     SetAllSkillHotkeys(true)
 }
 
-
 SetAllSkillHotkeys(enabled) {
-    global SkillComboListener
+    global listener
     global SkillConfigs
 
-    if !IsObject(SkillComboListener) {
+    if !IsObject(listener) {
         if !enabled
             return
 
         listener := OverlapComboListener(
+            OnSingleDown,
+            onSingleUp,
+            onComboDown,
+            onComboUp,
+            128,
             SkillHotkeysCondition
         )
 
-        ; 监听两个修饰键，逻辑完全相同，
-        ; 只是回调函数不同。
-        listener.AddModifier(
-            "Space",
-            OnSpaceSkillCombo
-        )
-
-        listener.AddModifier(
-            "F1",
-            OnAltSkillCombo
-        )
+        listener.AddB("F1", "F1")
+        listener.AddB("Space", "Space")
 
         for config in SkillConfigs {
-            listener.AddKey(
-                config.hotkey,
-                OnSingleSkillKey,
-                config.name
-            )
+            listener.AddA(config.hotkey, config.name)
         }
 
-        SkillComboListener := listener
     }
 
     if enabled
-        SkillComboListener.Enable()
+        listener.Enable()
     else
-        SkillComboListener.Disable()
+        listener.Disable()
 }
 
 
@@ -97,28 +86,37 @@ DisableAllSkillHotkeys() {
 
 SkillHotkeysCondition(*) {
     global remapEnabled
-
     return remapEnabled && IsTargetWindow()
 }
 
+OnSingleDown(group, key, data) {
+    if group = "B"
+        return
 
-; 普通单键：只有松开 q 时才执行
-OnSingleSkillKey(key, skill) {
     if key = "d" || key = "f" {
-        CastSlot(key)
-    } else {
-        AddCombo([key])
+        SendInput("{" key " down}")
+        return
+    }
+
+    AddCombo([key])
+}
+
+
+OnSingleUp(group, key, data) {
+    if group = "A" && (key = "d" || key = "f") {
+        SendInput("{" key " up}")
     }
 }
 
+onComboDown(keyA, skill, keyB, dataB){
+    if keyB = "F1" {
+        SwitchSkill(skill)
+    } else if keyB = "Space" {
+        SwitchThenCast(skill)
+    }
 
-; Space + 技能键
-OnSpaceSkillCombo(key, skill, modifier) {
-    SwitchThenCast(skill)
 }
 
+onComboUp(keyA, skill, keyB, dataB){
 
-; LAlt + 技能键
-OnAltSkillCombo(key, skill, modifier) {
-    SwitchOnly(skill)
 }

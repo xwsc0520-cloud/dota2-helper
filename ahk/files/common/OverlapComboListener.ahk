@@ -2,72 +2,95 @@
 
 
 class OverlapComboListener {
-    __New(criterion := 0) {
+    /*
+        全局单键按下回调：
+
+            OnSingleDown(group, key, data)
+
+        全局单键松开回调：
+
+            OnSingleUp(group, key, data)
+
+        全局双键按下回调：
+
+            OnComboDown(keyA, dataA, keyB, dataB)
+
+        全局双键松开回调：
+
+            OnComboUp(keyA, dataA, keyB, dataB)
+    */
+
+    __New(
+        onSingleDown,
+        onSingleUp,
+        onComboDown,
+        onComboUp,
+        delay := 128,
+        criterion := 0
+    ) {
+        if !HasMethod(onSingleDown, "Call")
+            throw TypeError("onSingleDown 必须是可调用对象。")
+
+        if !HasMethod(onSingleUp, "Call")
+            throw TypeError("onSingleUp 必须是可调用对象。")
+
+        if !HasMethod(onComboDown, "Call")
+            throw TypeError("onComboDown 必须是可调用对象。")
+
+        if !HasMethod(onComboUp, "Call")
+            throw TypeError("onComboUp 必须是可调用对象。")
+
+        if delay < 0
+            throw ValueError("delay 不能小于 0。")
+
+        this.OnSingleDown := onSingleDown
+        this.OnSingleUp := onSingleUp
+        this.OnComboDown := onComboDown
+        this.OnComboUp := onComboUp
+
+        this.Delay := delay
         this.Criterion := criterion
         this.Enabled := false
 
-        this.Keys := Map()
-        this.Modifiers := Map()
-        this.ModifierOrder := []
+        this.KeysA := Map()
+        this.KeysB := Map()
         this.Hotkeys := Map()
     }
 
 
-    AddKey(key, onSingle, data := "") {
+    AddA(key, data := "") {
         this._RequireDisabled()
+        this._RequireKeyName(key)
 
-        if this.Keys.Has(key) || this.Modifiers.Has(key)
+        if this._HasKey(key)
             throw ValueError("按键重复注册：" key)
 
-        this.Keys[key] := {
-            data: data,
-            onSingle: onSingle,
-            down: false,
-            pending: false,
-            comboTriggered: false,
-            sequence: 0
-        }
-
-        this.Hotkeys["$*" key] := ObjBindMethod(
-            this,
-            "_HandleKeyDown",
-            key
+        this.KeysA[key] := this._CreateKeyState(
+            "A",
+            key,
+            data
         )
 
-        this.Hotkeys["$*" key " Up"] := ObjBindMethod(
-            this,
-            "_HandleKeyUp",
-            key
-        )
+        this._AddHotkeys(key)
 
         return this
     }
 
 
-    AddModifier(key, onCombo) {
+    AddB(key, data := "") {
         this._RequireDisabled()
+        this._RequireKeyName(key)
 
-        if this.Modifiers.Has(key) || this.Keys.Has(key)
+        if this._HasKey(key)
             throw ValueError("按键重复注册：" key)
 
-        this.Modifiers[key] := {
-            onCombo: onCombo,
-            down: false
-        }
-
-        this.ModifierOrder.Push(key)
-
-        this.Hotkeys["$*" key] := ObjBindMethod(
-            this,
-            "_HandleModifierDown",
-            key
+        this.KeysB[key] := this._CreateKeyState(
+            "B",
+            key,
+            data
         )
 
-        this.Hotkeys["$*" key " Up"] := ObjBindMethod(
-            this,
-            "_HandleModifierUp",
-            key
-        )
+        this._AddHotkeys(key)
 
         return this
     }
@@ -77,7 +100,7 @@ class OverlapComboListener {
         if this.Enabled
             return this
 
-        this.Reset()
+        this._ClearStates(false)
         this.Enabled := true
 
         this._SelectHotkeyContext()
@@ -106,22 +129,58 @@ class OverlapComboListener {
         }
 
         this.Enabled := false
-        this.Reset()
+        this._ClearStates(true)
 
         return this
     }
 
 
     Reset() {
-        for key, state in this.Keys {
-            state.down := false
-            state.pending := false
-            state.comboTriggered := false
-            state.sequence += 1
-        }
+        this._ClearStates(true)
+    }
 
-        for modifier, state in this.Modifiers
-            state.down := false
+
+    _CreateKeyState(group, key, data) {
+        return {
+            group: group,
+            key: key,
+            data: data,
+
+            down: false,
+
+            ; 本次按住期间是否参与过双键
+            usedInCombo: false,
+
+            ; 是否已经触发单键按下
+            singleDownSent: false,
+
+            ; 是否已经触发单键松开
+            singleUpSent: false,
+
+            ; 是否仍允许等待单键超时
+            waitingSingle: false,
+
+            ; 当前计时器序号
+            timerToken: 0,
+
+            ; A 组键使用，B 组键不使用
+            pairs: Map()
+        }
+    }
+
+
+    _AddHotkeys(key) {
+        this.Hotkeys["$*" key] := ObjBindMethod(
+            this,
+            "_HandleKeyDown",
+            key
+        )
+
+        this.Hotkeys["$*" key " Up"] := ObjBindMethod(
+            this,
+            "_HandleKeyUp",
+            key
+        )
     }
 
 
@@ -129,112 +188,427 @@ class OverlapComboListener {
         if !this._CanRun()
             return
 
-        state := this.Keys[key]
+        state := this._GetKeyState(key)
 
-        ; 防止按住按键时的自动重复
+        if !state
+            return
+
+        /*
+         * 忽略自动重复。
+         */
         if state.down && GetKeyState(key, "P")
             return
 
+        /*
+         * 新的按键周期。
+         */
         state.down := true
-        state.pending := true
-        state.comboTriggered := false
-        state.sequence += 1
+        state.usedInCombo := false
+        state.singleDownSent := false
+        state.singleUpSent := false
+        state.waitingSingle := true
+
+        state.timerToken += 1
+        token := state.timerToken
 
         /*
-            普通键先按下，修饰键之前已经按住。
-            不限制两个键之间的时间，只要修饰键此刻仍按住即可。
-        */
-        for modifier in this.ModifierOrder {
-            modifierState := this.Modifiers[modifier]
+         * Delay = 0 时，立即触发单键按下。
+         */
+        if this.Delay = 0 {
+            this._TriggerSingleDown(state)
+        }
+        else {
+            SetTimer(
+                ObjBindMethod(
+                    this,
+                    "_SingleDelayTimer",
+                    state,
+                    token
+                ),
+                -this.Delay
+            )
+        }
 
-            if modifierState.down {
-                if this._TriggerCombo(key, modifier)
-                    return
+        /*
+         * 即使这个键在自己的等待计时器启动后，
+         * 也要立即检查当前是否已有另一组按键按下。
+         */
+        this._CheckCombosFor(state)
+    }
+
+
+    _HandleKeyUp(key, *) {
+        state := this._GetKeyState(key)
+
+        if !state
+            return
+
+        /*
+         * 如果当前不在有效监听状态，
+         * 仍然清理内部状态，但不发送业务回调。
+         */
+        canRun := this._CanRun()
+
+        state.down := false
+        state.waitingSingle := false
+        state.timerToken += 1
+
+        /*
+         * 尚未触发单键按下，且也没有参与双键：
+         *
+         *     A 按下
+         *     A 松开
+         *
+         * 立即补发：
+         *
+         *     单键按下
+         *     单键松开
+         */
+        if canRun
+            && !state.usedInCombo
+            && !state.singleDownSent {
+            this._TriggerSingleDown(state)
+        }
+
+        /*
+         * 如果单键按下事件已经发送，
+         * 现在发送单键松开。
+         */
+        if canRun
+            && state.singleDownSent
+            && !state.singleUpSent {
+            this._TriggerSingleUp(state)
+        }
+
+        /*
+         * 当前键松开后，所有涉及它的组合对都结束。
+         * 这些组合对下次重新同时按下时可以再次触发。
+         */
+        this._ClearPairsFor(state)
+
+        /*
+         * 清理本次按键周期。
+         */
+        state.usedInCombo := false
+        state.singleDownSent := false
+        state.singleUpSent := false
+    }
+
+
+    _SingleDelayTimer(state, token) {
+        /*
+         * 计时器属于旧按键周期时直接失效。
+         */
+        if state.timerToken != token
+            return
+
+        if !this.Enabled
+            return
+
+        if !state.down
+            return
+
+        if !state.waitingSingle
+            return
+
+        if state.usedInCombo
+            return
+
+        if !this._CanRun()
+            return
+
+        /*
+         * 超时后触发单键按下。
+         * 此后不再参与任何双键。
+         */
+        this._TriggerSingleDown(state)
+    }
+
+
+    _TriggerSingleDown(state) {
+        if state.singleDownSent
+            return false
+
+        if state.usedInCombo
+            return false
+
+        state.singleDownSent := true
+        state.waitingSingle := false
+
+        this.OnSingleDown.Call(
+            state.group,
+            state.key,
+            state.data
+        )
+
+        return true
+    }
+
+
+    _TriggerSingleUp(state) {
+        if !state.singleDownSent
+            return false
+
+        if state.singleUpSent
+            return false
+
+        state.singleUpSent := true
+
+        this.OnSingleUp.Call(
+            state.group,
+            state.key,
+            state.data
+        )
+
+        return true
+    }
+
+
+    _CheckCombosFor(state) {
+        /*
+         * 已经触发单键按下后，
+         * 该键不再参与任何双键。
+         */
+        if state.singleDownSent
+            return
+
+        if !state.waitingSingle
+            return
+
+        if state.group = "A" {
+            for keyB, stateB in this.KeysB {
+                if !stateB.down
+                    continue
+
+                this._TryTriggerCombo(state, stateB)
+            }
+        }
+        else {
+            for keyA, stateA in this.KeysA {
+                if !stateA.down
+                    continue
+
+                this._TryTriggerCombo(stateA, state)
             }
         }
     }
 
 
-    _HandleKeyUp(key, *) {
-        if !this.Keys.Has(key)
-            return
-
-        state := this.Keys[key]
-
-        ; 先记录松开
-        state.down := false
-
+    _TryTriggerCombo(stateA, stateB) {
         /*
-            只有普通键松开时才处理单键。
-            如果之前已经触发组合，则不触发单键。
-        */
-        if state.pending && !state.comboTriggered {
-            state.pending := false
-
-            if this._CanRun()
-                state.onSingle.Call(key, state.data)
-        }
-        else {
-            state.pending := false
-        }
-    }
-
-
-    _HandleModifierDown(modifier, *) {
-        if !this._CanRun()
-            return
-
-        state := this.Modifiers[modifier]
-
-        ; 防止自动重复
-        if state.down && GetKeyState(modifier, "P")
-            return
-
-        state.down := true
-
-        /*
-            修饰键后按下：
-            只要普通键当前仍处于按下状态，
-            就可以形成组合，不限制等待时间。
-        */
-        for key, keyState in this.Keys {
-            if keyState.down && keyState.pending
-                this._TriggerCombo(key, modifier)
-        }
-    }
-
-
-    _HandleModifierUp(modifier, *) {
-        if this.Modifiers.Has(modifier)
-            this.Modifiers[modifier].down := false
-    }
-
-
-    _TriggerCombo(key, modifier) {
-        keyState := this.Keys[key]
-
-        if !keyState.pending
+         * 任意一方已经触发单键按下，
+         * 则不能再形成双键。
+         */
+        if stateA.singleDownSent
             return false
 
+        if stateB.singleDownSent
+            return false
+
+        if !stateA.waitingSingle
+            return false
+
+        if !stateB.waitingSingle
+            return false
+
+        if !stateA.down || !stateB.down
+            return false
+
+        if !GetKeyState(stateA.key, "P")
+            return false
+
+        if !GetKeyState(stateB.key, "P")
+            return false
+
+        if !stateA.pairs.Has(stateB.key) {
+            stateA.pairs[stateB.key] := {
+                triggered: false,
+                downSent: false,
+                upSent: false
+            }
+        }
+
+        pair := stateA.pairs[stateB.key]
+
         /*
-            最终确认：两个按键必须在这一刻同时按下。
-        */
-        if !GetKeyState(key, "P")
+         * 同一对按键在仍然同时按住期间只触发一次。
+         */
+        if pair.triggered
             return false
 
-        if !GetKeyState(modifier, "P")
-            return false
+        pair.triggered := true
+        pair.downSent := true
+        pair.upSent := false
 
-        keyState.comboTriggered := true
-        keyState.pending := false
+        stateA.usedInCombo := true
+        stateB.usedInCombo := true
 
-        this.Modifiers[modifier].onCombo.Call(
-            key,
-            keyState.data,
-            modifier
+        stateA.waitingSingle := false
+        stateB.waitingSingle := false
+
+        stateA.timerToken += 1
+        stateB.timerToken += 1
+
+        this.OnComboDown.Call(
+            stateA.key,
+            stateA.data,
+            stateB.key,
+            stateB.data
         )
 
         return true
+    }
+
+
+    _ClearPairsFor(state) {
+        if state.group = "A" {
+            for keyB, pair in state.pairs {
+                if pair.triggered && pair.downSent && !pair.upSent {
+                    stateB := this.KeysB[keyB]
+
+                    pair.upSent := true
+
+                    this.OnComboUp.Call(
+                        state.key,
+                        state.data,
+                        stateB.key,
+                        stateB.data
+                    )
+                }
+
+                pair.triggered := false
+                pair.downSent := false
+                pair.upSent := false
+            }
+        }
+        else {
+            for keyA, stateA in this.KeysA {
+                if !stateA.pairs.Has(state.key)
+                    continue
+
+                pair := stateA.pairs[state.key]
+
+                if pair.triggered && pair.downSent && !pair.upSent {
+                    pair.upSent := true
+
+                    this.OnComboUp.Call(
+                        stateA.key,
+                        stateA.data,
+                        state.key,
+                        state.data
+                    )
+                }
+
+                pair.triggered := false
+                pair.downSent := false
+                pair.upSent := false
+            }
+        }
+    }
+
+
+    _ClearStates(sendUpEvents) {
+        /*
+         * 先处理所有仍处于按下状态的双键。
+         */
+        if sendUpEvents {
+            for keyA, stateA in this.KeysA {
+                for keyB, pair in stateA.pairs {
+                    if !pair.triggered
+                        continue
+
+                    if !pair.downSent || pair.upSent
+                        continue
+
+                    stateB := this.KeysB[keyB]
+
+                    pair.upSent := true
+
+                    this.OnComboUp.Call(
+                        stateA.key,
+                        stateA.data,
+                        stateB.key,
+                        stateB.data
+                    )
+                }
+            }
+
+            /*
+             * 再处理已经发送单键按下、但还没有发送单键松开的键。
+             */
+            for key, state in this.KeysA {
+                if state.singleDownSent && !state.singleUpSent {
+                    state.singleUpSent := true
+
+                    this.OnSingleUp.Call(
+                        state.group,
+                        state.key,
+                        state.data
+                    )
+                }
+            }
+
+            for key, state in this.KeysB {
+                if state.singleDownSent && !state.singleUpSent {
+                    state.singleUpSent := true
+
+                    this.OnSingleUp.Call(
+                        state.group,
+                        state.key,
+                        state.data
+                    )
+                }
+            }
+        }
+
+        /*
+         * 使所有已经存在的计时器失效。
+         */
+        for key, state in this.KeysA {
+            state.timerToken += 1
+            state.down := false
+            state.usedInCombo := false
+            state.singleDownSent := false
+            state.singleUpSent := false
+            state.waitingSingle := false
+
+            for keyB, pair in state.pairs {
+                pair.triggered := false
+                pair.downSent := false
+                pair.upSent := false
+            }
+        }
+
+        for key, state in this.KeysB {
+            state.timerToken += 1
+            state.down := false
+            state.usedInCombo := false
+            state.singleDownSent := false
+            state.singleUpSent := false
+            state.waitingSingle := false
+        }
+    }
+
+
+    _GetKeyState(key) {
+        if this.KeysA.Has(key)
+            return this.KeysA[key]
+
+        if this.KeysB.Has(key)
+            return this.KeysB[key]
+
+        return 0
+    }
+
+
+    _HasKey(key) {
+        return this.KeysA.Has(key) || this.KeysB.Has(key)
+    }
+
+
+    _RequireKeyName(key) {
+        if !(key is String) || key = ""
+            throw TypeError("按键名称必须是非空字符串。")
     }
 
 
@@ -244,7 +618,7 @@ class OverlapComboListener {
 
         if this.Criterion {
             if !this.Criterion.Call() {
-                this.Reset()
+                this._ClearStates(true)
                 return false
             }
         }

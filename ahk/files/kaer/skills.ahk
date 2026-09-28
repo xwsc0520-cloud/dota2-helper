@@ -59,20 +59,3 @@ CastSkill(skill, position) {
     AddCombo(combo)
     MarkSkillCast(skill)
 }
-
-CastSlot(position) {
-    global dl
-
-    if position = "d" {
-        skill := DSkill
-    } else if position = "f" {
-        skill := FSkill
-    }
-
-    if skill = "" {
-        AddCombo([position, dl])
-        return
-    }
-
-    CastSkill(skill, position)
-}
