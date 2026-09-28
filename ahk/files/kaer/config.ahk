@@ -20,45 +20,53 @@ global Jileng := "极冷"
 global SkillConfigs := [
     {
         hotkey: "q", combo: "qww", name: "吹风",
-        cd: 27000, cast: ["df"]
+        cd: 27000,
+        cast: ["df"]
     },
     {
         hotkey: "w", combo: "qwe", name: "推波",
-        cd: 36000, cast: ["df"]
+        cd: 36000,
+        ast: ["df"]
     },
     {
         hotkey: "s", combo: "qqe", name: "冰墙",
-        cd: 23000, cast: ["df"]
+        cd: 23000,
+        cast: ["df"]
     },
     {
         hotkey: "d", combo: "qee", name: "火人",
         cd: 27000,
-        cast: ["df", dl, "a", "e", "e", "e", "{CapsLock}"]
+        cast: ["df"]
     },
     {
         hotkey: "e", combo: "wwe", name: "灵动",
         cd: 15000,
-        cast: ["{LAlt down}", "df", "{LAlt up}", dl, "a", "e", "e", "e"]
+        cast: ["{LAlt down}", "df", "{LAlt up}"]
     },
     {
         hotkey: "a", combo: "qqq", name: Jileng,
-        cd: 19000, cast: ["df", "2"]
+        cd: 19000,
+        cast: ["df"]
     },
     {
         hotkey: "f", combo: "qqw", name: "隐身",
-        cd: 40000, cast: ["df"]
+        cd: 40000,
+        cast: ["df"]
     },
     {
         hotkey: "c", combo: "www", name: "雷爆",
-        cd: 27000, cast: ["df"]
+        cd: 27000,
+        cast: ["df"]
     },
     {
         hotkey: "x", combo: "eee", name: "天火",
-        cd: 23000, cast: ["df"]
+        cd: 23000,
+        cast: ["df"]
     },
     {
         hotkey: "z", combo: "wee", name: "陨石",
-        cd: 50000, cast: ["df"]
+        cd: 50000,
+        cast: ["df"]
     }
 ]
 
