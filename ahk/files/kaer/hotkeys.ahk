@@ -59,7 +59,7 @@ SetAllSkillHotkeys(enabled) {
             onSingleUp,
             onComboDown,
             onComboUp,
-            128,
+            256,
             SkillHotkeysCondition
         )
 
