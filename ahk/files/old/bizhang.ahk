@@ -10,28 +10,43 @@ SetWorkingDir(A_ScriptDir)
 global defaultDelay
 defaultDelay := 10
 
-listener := OverlapComboListener(IsTargetWindow)
+listener := OverlapComboListener(
+    OnSingleDown,
+    onSingleUp,
+    onComboDown,
+    onComboUp,
+    128,
+    IsTargetWindow
+)
 
-listener.AddModifier("Space", OnSpaceSkillCombo)
+listener.AddB("Space", "Space")
 
-listener.AddKey("z", OnSingleSkillKey)
-listener.AddKey("x", OnSingleSkillKey)
-listener.AddKey("c", OnSingleSkillKey)
+listener.AddA("z", "z")
+listener.AddA("x", "x")
+listener.AddA("c", "c")
 
 listener.Enable()
 
-OnSpaceSkillCombo(key, skill, modifier) {
-    if key = "z" {
+OnSingleDown(group, key, data) {
+    SendInput("{" key " down}")
+}
+
+OnSingleUp(group, key, data) {
+    SendInput("{" key " up}")
+}
+
+onComboDown(keyA, skill, keyB, dataB){
+    if keyA = "z" {
         AddCombo(["z", "3", "z", 500, "3", "3"])
-    } else if key = "x" {
+    } else if keyA = "x" {
         AddCombo(["z", "3", "x", "z", 500, "3", "3"])
-    } else if key = "c" {
+    } else if keyA = "c" {
         AddCombo(["z", "3", "c", "z", 500, "3", "3"])
     }
 }
 
-OnSingleSkillKey(key, skill) {
-     AddCombo([key])
+onComboUp(keyA, skill, keyB, dataB){
+
 }
 
 IsTargetWindow(*) {
