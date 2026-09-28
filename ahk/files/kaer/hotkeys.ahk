@@ -37,6 +37,11 @@ Right::ChangeLinglongxin(true)
 MButton::LAlt
 XButton1::LShift
 
+~RButton::{
+    CancelQueuedKey("d")
+    CancelQueuedKey("f")
+}
+
 #HotIf
 
 ; ============================================================

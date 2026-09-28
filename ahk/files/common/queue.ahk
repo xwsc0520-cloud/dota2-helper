@@ -5,15 +5,20 @@ global comboQueue := []
 global queueRunning := false
 global queueCancel := false
 
+; 记录需要取消的按键。
+; Map 的键为规范化后的按键名称，例如 "d"、"enter"、"lalt"。
+global cancelledKeys := Map()
+
 
 ; =========================
 ; 取消当前队列
 ; =========================
 CancelComboQueue()
 {
-    global comboQueue, queueRunning, queueCancel
+    global comboQueue, queueRunning, queueCancel, cancelledKeys
 
     comboQueue := []
+    cancelledKeys.Clear()
     queueCancel := true
 
     ; 防止修饰键残留
@@ -32,6 +37,103 @@ CancelComboQueue()
 
 
 ; =========================
+; 取消尚未发送的指定按键
+;
+; 示例：
+;   CancelQueuedKey("d")
+;   CancelQueuedKey("{d}")
+;   CancelQueuedKey("{d down}")
+;   CancelQueuedKey("{Enter}")
+;
+; down、up 和 {Blind} 不影响匹配。
+; 已经调用 SendEvent 发送的按键不会被撤销。
+; =========================
+CancelQueuedKey(key)
+{
+    global comboQueue, cancelledKeys
+
+    keyName := NormalizeKeyName(key)
+
+    ; 确保已经从全局队列取出的当前组合也能被过滤。
+    cancelledKeys[keyName] := true
+
+    ; 立即删除全局队列中尚未取出的匹配动作。
+    for combo in comboQueue {
+        index := combo.Length
+
+        while index >= 1 {
+            action := combo[index]
+
+            if action.type = "send"
+                && action.keyName = keyName {
+                combo.RemoveAt(index)
+            }
+
+            index--
+        }
+    }
+}
+
+
+; =========================
+; 将按键格式规范化为按键名称
+;
+; 以下格式都会得到 "d"：
+;   "d"
+;   "{d}"
+;   "{d down}"
+;   "{d up}"
+;   "{Blind}d"
+;   "{Blind}{d down}"
+; =========================
+NormalizeKeyName(key)
+{
+    if Type(key) != "String"
+        throw TypeError(
+            "NormalizeKeyName(): key 必须是字符串"
+        )
+
+    if key = ""
+        throw ValueError(
+            "NormalizeKeyName(): key 不能为空"
+        )
+
+    value := key
+
+    ; 去掉内部发送值可能带有的 {Blind} 前缀。
+    if RegExMatch(value, "i)^\{Blind\}", &blindMatch)
+        value := SubStr(value, StrLen(blindMatch[0]) + 1)
+
+    ; 普通单字符，例如 d、1、?
+    if StrLen(value) = 1
+        return StrLower(value)
+
+    ; 显式 AHK 按键格式：
+    ; {Key}
+    ; {Key down}
+    ; {Key up}
+    if !RegExMatch(
+        value,
+        "i)^\{([A-Za-z][A-Za-z0-9]*)(?:\s+(?:down|up))?\}$",
+        &match
+    ) {
+        throw ValueError(
+            "NormalizeKeyName(): 无效的单个按键：" key
+        )
+    }
+
+    keyName := match[1]
+
+    if StrLen(keyName) > 1 && !IsAllowedKeyName(keyName)
+        throw ValueError(
+            "NormalizeKeyName(): 不允许的按键名称：" keyName
+        )
+
+    return StrLower(keyName)
+}
+
+
+; =========================
 ; 添加一个按键/延迟序列
 ;
 ; 字符串：按键
@@ -40,6 +142,7 @@ CancelComboQueue()
 AddCombo(combo)
 {
     global comboQueue, queueRunning, queueCancel
+    global cancelledKeys
 
     if !IsObject(combo)
         throw TypeError(
@@ -61,6 +164,8 @@ AddCombo(combo)
     comboQueue.Push(actions)
 
     if !queueRunning {
+        ; 新一轮队列开始时，清除上一轮的按键取消记录。
+        cancelledKeys.Clear()
         queueCancel := false
         queueRunning := true
         SetTimer(ProcessComboQueue, -1)
@@ -81,7 +186,8 @@ ParseComboItem(item, index)
 
         return {
             type: "send",
-            value: "{Blind}" item
+            value: "{Blind}" item,
+            keyName: NormalizeKeyName(item)
         }
     }
 
@@ -218,7 +324,13 @@ IsAllowedKeyName(keyName)
     if RegExMatch(keyName, "i)^Numpad[0-9]$")
         return true
 
-    return allowedNames.Has(keyName)
+    ; Map 的字符串键默认区分大小写，因此逐项忽略大小写比较。
+    for allowedName in allowedNames {
+        if StrLower(allowedName) = StrLower(keyName)
+            return true
+    }
+
+    return false
 }
 
 
@@ -247,6 +359,7 @@ ValidateDelay(value, index)
 ProcessComboQueue()
 {
     global comboQueue, queueRunning, queueCancel
+    global cancelledKeys
 
     try {
         while comboQueue.Length > 0 && !queueCancel {
@@ -258,6 +371,11 @@ ProcessComboQueue()
 
                 switch action.type {
                     case "send":
+                        ; 在真正发送前检查，因此已取出但尚未发送的
+                        ; 当前组合动作也可以被取消。
+                        if cancelledKeys.Has(action.keyName)
+                            continue
+
                         SendEvent(action.value)
                         RandomDelay(defaultDelay)
 
@@ -272,11 +390,16 @@ ProcessComboQueue()
 
         if queueCancel {
             comboQueue := []
+            cancelledKeys.Clear()
             queueCancel := false
         }
         else if comboQueue.Length > 0 {
             queueRunning := true
             SetTimer(ProcessComboQueue, -1)
+        }
+        else {
+            ; 本轮队列已执行完毕，取消状态不延续到下一轮。
+            cancelledKeys.Clear()
         }
     }
 }
