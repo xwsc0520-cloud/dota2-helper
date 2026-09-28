@@ -34,6 +34,9 @@ Down::ChangeHeroLevel(-1)
 Left::ChangeLinglongxin(false)
 Right::ChangeLinglongxin(true)
 
+MButton::LAlt
+XButton1::LShift
+
 #HotIf
 
 ; ============================================================
