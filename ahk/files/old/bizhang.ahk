@@ -20,7 +20,7 @@ listener := OverlapComboListener(
     IsTargetWindow
 )
 
-listener.AddB("MButton", "MButton")
+listener.AddB("Space", "Space")
 
 listener.AddA("z", "z")
 listener.AddA("x", "x")
