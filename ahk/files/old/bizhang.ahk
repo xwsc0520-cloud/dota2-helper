@@ -16,10 +16,11 @@ listener := OverlapComboListener(
     onComboDown,
     onComboUp,
     128,
+    999999,
     IsTargetWindow
 )
 
-listener.AddB("Space", "Space")
+listener.AddB("MButton", "MButton")
 
 listener.AddA("z", "z")
 listener.AddA("x", "x")

@@ -41,6 +41,8 @@ Right::ChangeLinglongxin(true)
 ; ============================================================
 
 global listener := 0
+KeyR := "F1"
+KeyRD := "Space"
 
 RegisterAllSkillHotkeys() {
     SetAllSkillHotkeys(true)
@@ -60,11 +62,12 @@ SetAllSkillHotkeys(enabled) {
             onComboDown,
             onComboUp,
             256,
+            999999,
             SkillHotkeysCondition
         )
 
-        listener.AddB("F1", "F1")
-        listener.AddB("Space", "Space")
+        listener.AddB(KeyR, KeyR)
+        listener.AddB(KeyRD, KeyRD)
 
         for config in SkillConfigs {
             listener.AddA(config.hotkey, config.name)
@@ -90,28 +93,18 @@ SkillHotkeysCondition(*) {
 }
 
 OnSingleDown(group, key, data) {
-    if group = "B"
-        return
-
-    if key = "d" || key = "f" {
-        SendInput("{" key " down}")
-        return
-    }
-
-    AddCombo([key])
+    SendInput("{" key " down}")
 }
 
 
 OnSingleUp(group, key, data) {
-    if group = "A" && (key = "d" || key = "f") {
-        SendInput("{" key " up}")
-    }
+    SendInput("{" key " up}")
 }
 
 onComboDown(keyA, skill, keyB, dataB){
-    if keyB = "F1" {
+    if keyB = KeyR {
         SwitchSkill(skill)
-    } else if keyB = "Space" {
+    } else if keyB = KeyRD {
         SwitchThenCast(skill)
     }
 

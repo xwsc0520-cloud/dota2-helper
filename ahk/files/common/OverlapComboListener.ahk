@@ -1,22 +1,17 @@
 #Requires AutoHotkey v2.0
 
-
 class OverlapComboListener {
     /*
         全局单键按下回调：
-
             OnSingleDown(group, key, data)
 
         全局单键松开回调：
-
             OnSingleUp(group, key, data)
 
         全局双键按下回调：
-
             OnComboDown(keyA, dataA, keyB, dataB)
 
         全局双键松开回调：
-
             OnComboUp(keyA, dataA, keyB, dataB)
     */
 
@@ -25,7 +20,8 @@ class OverlapComboListener {
         onSingleUp,
         onComboDown,
         onComboUp,
-        delay := 128,
+        delayA := 128,
+        delayB := 999999,
         criterion := 0
     ) {
         if !HasMethod(onSingleDown, "Call")
@@ -40,15 +36,19 @@ class OverlapComboListener {
         if !HasMethod(onComboUp, "Call")
             throw TypeError("onComboUp 必须是可调用对象。")
 
-        if delay < 0
-            throw ValueError("delay 不能小于 0。")
+        if delayA < 0
+            throw ValueError("delayA 不能小于 0。")
+
+        if delayB < 0
+            throw ValueError("delayB 不能小于 0。")
 
         this.OnSingleDown := onSingleDown
         this.OnSingleUp := onSingleUp
         this.OnComboDown := onComboDown
         this.OnComboUp := onComboUp
 
-        this.Delay := delay
+        this.DelayA := delayA
+        this.DelayB := delayB
         this.Criterion := criterion
         this.Enabled := false
 
@@ -65,12 +65,7 @@ class OverlapComboListener {
         if this._HasKey(key)
             throw ValueError("按键重复注册：" key)
 
-        this.KeysA[key] := this._CreateKeyState(
-            "A",
-            key,
-            data
-        )
-
+        this.KeysA[key] := this._CreateKeyState("A", key, data)
         this._AddHotkeys(key)
 
         return this
@@ -84,12 +79,7 @@ class OverlapComboListener {
         if this._HasKey(key)
             throw ValueError("按键重复注册：" key)
 
-        this.KeysB[key] := this._CreateKeyState(
-            "B",
-            key,
-            data
-        )
-
+        this.KeysB[key] := this._CreateKeyState("B", key, data)
         this._AddHotkeys(key)
 
         return this
@@ -148,19 +138,15 @@ class OverlapComboListener {
 
             down: false,
 
-            ; 本次按住期间是否参与过双键
+            ; 本次按住期间是否参与过双键；参与后不再触发单键
             usedInCombo: false,
 
-            ; 是否已经触发单键按下
             singleDownSent: false,
-
-            ; 是否已经触发单键松开
             singleUpSent: false,
 
-            ; 是否仍允许等待单键超时
+            ; 只表示是否仍在等待首次单键超时
             waitingSingle: false,
 
-            ; 当前计时器序号
             timerToken: 0,
 
             ; A 组键使用，B 组键不使用
@@ -211,10 +197,12 @@ class OverlapComboListener {
         state.timerToken += 1
         token := state.timerToken
 
+        delay := state.group = "A" ? this.DelayA : this.DelayB
+
         /*
-         * Delay = 0 时，立即触发单键按下。
+         * 对应组的延迟为 0 时，立即触发单键按下。
          */
-        if this.Delay = 0 {
+        if delay = 0 {
             this._TriggerSingleDown(state)
         }
         else {
@@ -225,13 +213,12 @@ class OverlapComboListener {
                     state,
                     token
                 ),
-                -this.Delay
+                -delay
             )
         }
 
         /*
-         * 即使这个键在自己的等待计时器启动后，
-         * 也要立即检查当前是否已有另一组按键按下。
+         * 检查另一组已经按住的键。
          */
         this._CheckCombosFor(state)
     }
@@ -254,15 +241,8 @@ class OverlapComboListener {
         state.timerToken += 1
 
         /*
-         * 尚未触发单键按下，且也没有参与双键：
-         *
-         *     A 按下
-         *     A 松开
-         *
-         * 立即补发：
-         *
-         *     单键按下
-         *     单键松开
+         * 未参与双键、且尚未触发单键按下：
+         * 松开时立即补发单键按下。
          */
         if canRun
             && !state.usedInCombo
@@ -270,10 +250,6 @@ class OverlapComboListener {
             this._TriggerSingleDown(state)
         }
 
-        /*
-         * 如果单键按下事件已经发送，
-         * 现在发送单键松开。
-         */
         if canRun
             && state.singleDownSent
             && !state.singleUpSent {
@@ -281,14 +257,11 @@ class OverlapComboListener {
         }
 
         /*
-         * 当前键松开后，所有涉及它的组合对都结束。
-         * 这些组合对下次重新同时按下时可以再次触发。
+         * 当前键松开，结束所有涉及它的组合。
+         * 另一侧仍按住的键保留组合资格。
          */
         this._ClearPairsFor(state)
 
-        /*
-         * 清理本次按键周期。
-         */
         state.usedInCombo := false
         state.singleDownSent := false
         state.singleUpSent := false
@@ -296,9 +269,6 @@ class OverlapComboListener {
 
 
     _SingleDelayTimer(state, token) {
-        /*
-         * 计时器属于旧按键周期时直接失效。
-         */
         if state.timerToken != token
             return
 
@@ -318,8 +288,8 @@ class OverlapComboListener {
             return
 
         /*
-         * 超时后触发单键按下。
-         * 此后不再参与任何双键。
+         * 超时后触发单键按下；
+         * 此后该键不再参与双键。
          */
         this._TriggerSingleDown(state)
     }
@@ -366,13 +336,15 @@ class OverlapComboListener {
 
     _CheckCombosFor(state) {
         /*
-         * 已经触发单键按下后，
-         * 该键不再参与任何双键。
+         * 已触发单键按下的键不能参与双键。
+         *
+         * 已参与过双键的键，即使不再等待单键超时，
+         * 只要还按住，仍可与新按下的另一组键组合。
          */
         if state.singleDownSent
             return
 
-        if !state.waitingSingle
+        if !state.waitingSingle && !state.usedInCombo
             return
 
         if state.group = "A" {
@@ -395,20 +367,20 @@ class OverlapComboListener {
 
 
     _TryTriggerCombo(stateA, stateB) {
-        /*
-         * 任意一方已经触发单键按下，
-         * 则不能再形成双键。
-         */
         if stateA.singleDownSent
             return false
 
         if stateB.singleDownSent
             return false
 
-        if !stateA.waitingSingle
+        /*
+         * 尚在等待单键超时，或本次按住期间已参与过双键，
+         * 都可以参加组合。
+         */
+        if !stateA.waitingSingle && !stateA.usedInCombo
             return false
 
-        if !stateB.waitingSingle
+        if !stateB.waitingSingle && !stateB.usedInCombo
             return false
 
         if !stateA.down || !stateB.down
@@ -443,6 +415,10 @@ class OverlapComboListener {
         stateA.usedInCombo := true
         stateB.usedInCombo := true
 
+        /*
+         * 首次组合后取消两侧的单键等待，
+         * 但不取消其后续与其他键组合的资格。
+         */
         stateA.waitingSingle := false
         stateB.waitingSingle := false
 

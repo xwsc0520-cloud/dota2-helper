@@ -26,7 +26,7 @@ global SkillConfigs := [
     {
         hotkey: "w", combo: "qwe", name: "推波",
         cd: 36000,
-        ast: ["df"]
+        cast: ["df"]
     },
     {
         hotkey: "s", combo: "qqe", name: "冰墙",
