@@ -96,12 +96,25 @@ SkillHotkeysCondition(*) {
 }
 
 OnSingleDown(group, key, data) {
+    if group = "B" {
+        return
+    }
     SendInput("{" key " down}")
 }
 
 
 OnSingleUp(group, key, data) {
-    SendInput("{" key " up}")
+    if group = "B" {
+        return
+    }
+
+    ret := false
+    if key = "d" || key = "f" {
+        ret := CastSlotUp(key)
+    }
+    if !ret {
+        SendInput("{" key " up}")
+    }
 }
 
 onComboDown(keyA, skill, keyB, dataB){

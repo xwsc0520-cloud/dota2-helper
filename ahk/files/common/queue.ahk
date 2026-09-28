@@ -148,6 +148,9 @@ ValidateKeyString(key, index)
 
     keyName := parts[1]
 
+    if StrLen(keyName) = 1
+        return
+
     if !IsAllowedKeyName(keyName)
         throw ValueError(
             "combo[" index "]: 不允许的按键名称：" keyName

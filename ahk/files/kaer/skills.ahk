@@ -17,6 +17,7 @@ SwitchThenCast(skill) {
     }
 
     SwitchSkill(skill)
+    AddCombo([dl])
     CastSkill(skill, "d")
 }
 
@@ -28,7 +29,6 @@ SwitchSkill(skill) {
     Loop Parse, SkillByName[skill].combo
         combo.Push(A_LoopField)
     combo.Push("r")
-    combo.Push(dl)
     AddCombo(combo)
 
     if skill != FSkill && skill != DSkill {
@@ -43,19 +43,30 @@ SwitchSkill(skill) {
     return true
 }
 
-CastSkill(skill, position) {
-    global SkillByName, dl
-
+CastSkill(skill, key) {
     combo := []
-
     for item in SkillByName[skill].cast {
         if item = "df" {
-            item := position
+            item := key
         }
         combo.Push(item)
     }
-
-    combo.Push(dl)
     AddCombo(combo)
     MarkSkillCast(skill)
+}
+
+CastSlotUp(key) {
+    skill := ""
+    if key = "d" {
+        skill := DSkill
+    } else if key = "f" {
+        skill := FSkill
+    }
+    if skill = "" {
+        return false
+    }
+
+    key := "{" key " up}"
+    CastSkill(skill, key)
+    return true
 }
